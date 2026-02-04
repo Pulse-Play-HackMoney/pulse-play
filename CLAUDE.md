@@ -1,0 +1,5 @@
+This is the development repo for Pulse Play.
+
+The reference document for what we are building is the PROJECT_SPECIFICATION.md file. This is meant to give you the big picture of what we are trying to achieve, ie. it is the canonical explanation of the finish line. While developing, if there is something that contradicts this project specification, then highlight it to me and we will either revert or update the project spec to reflect the change.
+
+While teaching myself how to use the Yellow Network, I spun up a teaching repo at `../yellow-quickstart`. In this repo, there are a number of scripts outlining some basic flows, as well as some helper functions that wrap up certain functionality. Reference these whenever necessary to get an idea of how to interact with the @erc7824/nitrolite library.
