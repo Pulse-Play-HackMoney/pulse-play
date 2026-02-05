@@ -14,6 +14,7 @@ import type {
   AdminStateResponse,
   MMInfoResponse,
   MMFaucetResponse,
+  UserFaucetResponse,
 } from './types';
 
 // API Error class
@@ -122,4 +123,15 @@ export async function requestMMFaucet(count = 1): Promise<MMFaucetResponse> {
     body: JSON.stringify({ count }),
   });
   return handleResponse<MMFaucetResponse>(response);
+}
+
+// ── User Faucet Endpoints ──
+
+export async function requestUserFaucet(address: string, count = 1): Promise<UserFaucetResponse> {
+  const response = await fetch(`${HUB_REST_URL}/api/faucet/user`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ address, count }),
+  });
+  return handleResponse<UserFaucetResponse>(response);
 }

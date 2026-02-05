@@ -3,11 +3,19 @@ import { createTestContext } from '../context.js';
 import type { AppContext } from '../context.js';
 import type { FastifyInstance } from 'fastify';
 
+// Mock the faucet module used by the user faucet route
+const mockRequestFaucet = jest.fn().mockResolvedValue(undefined);
+jest.mock('../modules/clearnode/faucet.js', () => ({
+  requestFaucet: (...args: unknown[]) => mockRequestFaucet(...args),
+}));
+
 describe('Faucet Routes', () => {
   let app: FastifyInstance;
   let ctx: AppContext;
 
   beforeEach(async () => {
+    mockRequestFaucet.mockClear();
+    mockRequestFaucet.mockResolvedValue(undefined);
     ctx = createTestContext();
     app = await buildApp(ctx);
   });
@@ -18,38 +26,86 @@ describe('Faucet Routes', () => {
 
   // ── User faucet ──
 
-  test('POST /api/faucet/user returns success (stub)', async () => {
+  test('POST /api/faucet/user calls requestFaucet with address', async () => {
     const res = await app.inject({
       method: 'POST',
       url: '/api/faucet/user',
-      payload: { address: '0xAlice', amount: 100 },
+      payload: { address: '0xAlice' },
     });
     expect(res.json().success).toBe(true);
+    expect(res.json().funded).toBe(1);
+    expect(mockRequestFaucet).toHaveBeenCalledWith('0xAlice');
   });
 
   test('returns 400 when address is missing', async () => {
     const res = await app.inject({
       method: 'POST',
       url: '/api/faucet/user',
-      payload: { amount: 100 },
+      payload: { count: 1 },
     });
     expect(res.statusCode).toBe(400);
   });
 
-  test('returns 400 when amount is missing or <= 0', async () => {
+  test('POST /api/faucet/user with count=3 calls requestFaucet 3 times', async () => {
     const res = await app.inject({
       method: 'POST',
       url: '/api/faucet/user',
-      payload: { address: '0xAlice', amount: 0 },
+      payload: { address: '0xAlice', count: 3 },
     });
-    expect(res.statusCode).toBe(400);
+    expect(mockRequestFaucet).toHaveBeenCalledTimes(3);
+    expect(res.json()).toEqual({ success: true, funded: 3 });
+  });
 
-    const res2 = await app.inject({
+  test('POST /api/faucet/user with no count defaults to 1', async () => {
+    const res = await app.inject({
       method: 'POST',
       url: '/api/faucet/user',
       payload: { address: '0xAlice' },
     });
-    expect(res2.statusCode).toBe(400);
+    expect(mockRequestFaucet).toHaveBeenCalledTimes(1);
+    expect(res.json().funded).toBe(1);
+  });
+
+  test('POST /api/faucet/user with count > 50 returns 400', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/faucet/user',
+      payload: { address: '0xAlice', count: 51 },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toContain('must not exceed 50');
+  });
+
+  test('POST /api/faucet/user partial failure returns funded count', async () => {
+    let callCount = 0;
+    mockRequestFaucet.mockImplementation(async () => {
+      callCount++;
+      if (callCount === 3) throw new Error('Faucet limit reached');
+    });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/faucet/user',
+      payload: { address: '0xAlice', count: 5 },
+    });
+
+    const body = res.json();
+    expect(body.success).toBe(true);
+    expect(body.funded).toBe(2);
+    expect(body.requested).toBe(5);
+    expect(body.error).toBe('Faucet limit reached');
+  });
+
+  test('POST /api/faucet/user returns 500 when first request fails', async () => {
+    mockRequestFaucet.mockRejectedValueOnce(new Error('Faucet down'));
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/faucet/user',
+      payload: { address: '0xAlice' },
+    });
+    expect(res.statusCode).toBe(500);
+    expect(res.json().error).toBe('Faucet down');
   });
 
   // ── MM faucet ──

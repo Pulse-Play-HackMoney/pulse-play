@@ -25,7 +25,7 @@ export interface OutcomeRequest {
 
 export interface FaucetRequest {
   address: string;
-  amount: number;
+  count?: number;
 }
 
 export interface MMFaucetRequest {

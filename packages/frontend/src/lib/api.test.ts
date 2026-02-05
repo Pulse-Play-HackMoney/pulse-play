@@ -9,6 +9,7 @@ import {
   getAdminState,
   getMMInfo,
   requestMMFaucet,
+  requestUserFaucet,
   ApiError,
 } from './api';
 import type { BetRequest, MarketResponse, PositionsResponse } from './types';
@@ -271,6 +272,44 @@ describe('api', () => {
         'http://localhost:3001/api/faucet/mm',
         expect.objectContaining({
           body: JSON.stringify({ count: 1 }),
+        })
+      );
+    });
+  });
+
+  describe('requestUserFaucet', () => {
+    it('makes POST to /api/faucet/user with address and count', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true, funded: 5 }),
+      });
+
+      const result = await requestUserFaucet('0xAlice', 5);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:3001/api/faucet/user',
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address: '0xAlice', count: 5 }),
+        })
+      );
+      expect(result.success).toBe(true);
+      expect(result.funded).toBe(5);
+    });
+
+    it('defaults count to 1', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true, funded: 1 }),
+      });
+
+      await requestUserFaucet('0xAlice');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:3001/api/faucet/user',
+        expect.objectContaining({
+          body: JSON.stringify({ address: '0xAlice', count: 1 }),
         })
       );
     });

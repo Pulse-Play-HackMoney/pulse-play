@@ -1,12 +1,18 @@
 # PulsePlay Developer Dashboard
 
-A terminal-based real-time developer dashboard for observing the PulsePlay hub backend. Built with [Ink](https://github.com/vadimdemedes/ink) (React for CLI).
+A fullscreen terminal-based real-time developer dashboard for observing the PulsePlay hub backend. Built with [Ink](https://github.com/vadimdemedes/ink) (React for CLI).
 
 ## Features
 
-- Real-time WebSocket event log
-- Market state display with LMSR odds
-- Position tracking
+- **Fullscreen TUI** with alternate screen buffer (clean terminal on exit)
+- **Dynamic sizing** — adapts to terminal resize
+- **Panel navigation** — Tab to switch active panel, j/k to scroll
+- **Vim-style command bar** — `:clear`, `:reset`, `:reconnect`, `:quit`
+- **Help overlay** — press `?` for keybinding reference
+- **Visual price bars** — ASCII progress bars for BALL/STRIKE odds
+- Real-time WebSocket event log with auto-scroll
+- Market state display with LMSR odds (decimal + American)
+- Position tracking with scrollable list
 - System status (connections, game state)
 - Auto-reconnect on connection loss
 
@@ -48,28 +54,58 @@ pnpm dev --help
 ## Layout
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│               PULSEPLAY DEVELOPER DASHBOARD  | Press 'q' to quit   │
-├─────────────────────────────────┬───────────────────────────────────┤
-│  ┌────── MARKET: market-3 ────┐ │  ┌─────────── SYSTEM ───────────┐ │
-│  │ Status: OPEN               │ │  │ WS: Connected                │ │
-│  │ BALL:   45.2% (-122)       │ │  │ API: OK                      │ │
-│  │ STRIKE: 54.8% (+122)       │ │  │ Clients: 2                   │ │
-│  └────────────────────────────┘ │  │ Game: ACTIVE                 │ │
-│  ┌────── POSITIONS (2) ───────┐ │  └──────────────────────────────┘ │
-│  │ 0x1234.. BALL   12.50 $5   │ │  ┌──────── EVENT LOG ───────────┐ │
-│  │ 0x5678.. STRIKE  8.30 $4   │ │  │ 14:32:15 [GAME_STATE] ACTIVE │ │
-│  └────────────────────────────┘ │  │ 14:32:18 [MARKET] -> OPEN    │ │
-│                                 │  │ 14:32:22 [ODDS] Ball: 48.1%  │ │
-│                                 │  └──────────────────────────────┘ │
-└─────────────────────────────────┴───────────────────────────────────┘
+╔═══════════════════════════════════════════════════════════════════════╗
+║  PULSEPLAY DEVELOPER DASHBOARD                        [Event Log]   ║
+╚═══════════════════════════════════════════════════════════════════════╝
+┌────────── MARKET: market-3 ──────┐ ┌──────────── SYSTEM ────────────┐
+│ Status: OPEN                     │ │ WS: Connected                  │
+│                                  │ │ API: OK                        │
+│ BALL    52.3% (-110)             │ │ Clients: 2                     │
+│ ████████████░░░░░░░░░░           │ │ Game: ACTIVE                   │
+│                                  │ │ Positions: 5                   │
+│ STRIKE  47.7% (+110)             │ └────────────────────────────────┘
+│ ██████████░░░░░░░░░░░░           │ ┌──────── EVENT LOG ─────────────┐
+│                                  │ │ 14:32:15 [GAME_STATE] ACTIVE   │
+│ qBall: 10.50, qStrike: -2.30    │ │ 14:32:18 [MARKET] OPEN         │
+└──────────────────────────────────┘ │ 14:32:22 [ODDS] Ball: 52.3%    │
+┌────── POSITIONS (5) 1-3 of 5 ───┐ │ 14:32:25 [BET] WIN $12.50      │
+│ 0x1234.. BALL   12.50 $5.00     │ │ 14:32:30 [POSITION] 0x56..     │
+│ 0x5678.. STRIKE  8.30 $4.10     │ │                                 │
+│ 0xabcd.. BALL    5.00 $2.75     │ │                                 │
+└──────────────────────────────────┘ └─────────────────────────────────┘
+ Tab panel  j/k scroll  ? help  : cmd  q quit       WS: ws://localhost:3001/ws
 ```
 
 ## Controls
 
+### Navigation
+
 | Key | Action |
 |-----|--------|
-| `q` | Quit the dashboard |
+| `Tab` | Switch active panel (Positions / Event Log) |
+| `j` / `↓` | Scroll down in active panel |
+| `k` / `↑` | Scroll up in active panel |
+| `g` | Scroll to top |
+| `G` | Scroll to bottom |
+
+### Commands
+
+Press `:` to enter command mode, type a command, then press Enter.
+
+| Command | Description |
+|---------|-------------|
+| `:clear` / `:c` | Clear event log |
+| `:reset` / `:r` | Reset backend state (POST /api/admin/reset) |
+| `:reconnect` | Reconnect WebSocket |
+| `:quit` / `:q` | Quit dashboard |
+
+### General
+
+| Key | Action |
+|-----|--------|
+| `q` | Quit |
+| `?` | Toggle help overlay |
+| `Escape` | Cancel command / dismiss help |
 
 ## Event Types
 
@@ -92,7 +128,7 @@ All state is derived from WebSocket messages:
 - Incremental updates via `POSITION_ADDED`, `CONNECTION_COUNT`, etc.
 - No REST polling required (reduces backend load)
 
-This separation means the dashboard can be started/stopped without affecting the hub.
+The dashboard uses an **alternate screen buffer** — when it launches, your terminal history is hidden and the dashboard takes over the full screen. On exit (via `q`, `:quit`, or Ctrl+C), the terminal is restored to its previous state.
 
 ## Testing
 

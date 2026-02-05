@@ -44,6 +44,15 @@ export function Header() {
             >
               Market Maker
             </Link>
+            <Link
+              href="/account"
+              className={`text-sm ${
+                pathname === '/account' ? 'text-white' : 'text-gray-400 hover:text-white'
+              }`}
+              data-testid="nav-account"
+            >
+              Account
+            </Link>
           </nav>
         </div>
         <div className="flex items-center gap-4">

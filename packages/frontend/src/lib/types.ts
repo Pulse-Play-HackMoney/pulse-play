@@ -162,3 +162,12 @@ export interface MMFaucetResponse {
   requested?: number;
   error?: string;
 }
+
+// ── User Faucet DTOs ──
+
+export interface UserFaucetResponse {
+  success: boolean;
+  funded: number;
+  requested?: number;
+  error?: string;
+}

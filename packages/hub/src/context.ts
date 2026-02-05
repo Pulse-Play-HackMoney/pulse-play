@@ -33,6 +33,8 @@ export function createTestContext(
     submitAppState: jest.fn().mockResolvedValue({ version: 1 }),
     closeSession: jest.fn().mockResolvedValue(undefined),
     transfer: jest.fn().mockResolvedValue(undefined),
+    createAppSession: jest.fn().mockResolvedValue({ appSessionId: '0xSESSION', version: 1, status: 'open' }),
+    getAppSessions: jest.fn().mockResolvedValue([]),
     getAddress: jest.fn().mockReturnValue('0xMM'),
   } as unknown as ClearnodeClient;
 

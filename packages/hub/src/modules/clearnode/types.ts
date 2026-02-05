@@ -38,3 +38,31 @@ export interface AppSessionAllocation {
   amount: string;
   participant: Address;
 }
+
+export interface CreateAppSessionParams {
+  definition: {
+    protocol: string;
+    participants: Address[];
+    weights: number[];
+    quorum: number;
+    challenge: number;
+    nonce?: number;
+  };
+  allocations: AppSessionAllocation[];
+  sessionData?: string;
+}
+
+export interface CreateAppSessionResult {
+  appSessionId: Hex;
+  version: number;
+  status: string;
+}
+
+export interface AppSessionInfo {
+  appSessionId: Hex;
+  application: string;
+  status: string;
+  participants: Address[];
+  version: number;
+  sessionData?: string;
+}

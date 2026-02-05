@@ -660,3 +660,178 @@ interface ClearnodeContextValue {
 ### Test Results
 - **Frontend:** 128 passed (was 104, +24 new: 8 rpc + 6 auth + 10 provider)
 - **Total:** 354 passing tests
+
+---
+
+## User Account Page Implementation
+Date: 2026-02-05
+
+### What was done:
+Implemented the `/account` page with 3 cards: Session management, Faucet funding, and Balance display.
+
+#### Hub Changes
+1. **types.ts** — Changed `FaucetRequest` from `{ address, amount }` to `{ address, count? }` (count-based like MM faucet)
+2. **faucet.routes.ts** — Rewrote `POST /api/faucet/user` to call `requestFaucet(address)` from clearnode/faucet.ts in a loop. Accepts `{ address, count? }` (default 1, max 50). Returns `{ success, funded }` or partial failure with `{ success, funded, requested, error }`.
+3. **logger.ts** — Updated `faucetUser()` to match count-based pattern: `faucetUser(address, count?, error?)`
+4. **faucet.routes.test.ts** — Rewrote user faucet tests (7 tests: success, missing address, count=3, default count, count>50, partial failure, total failure). Mock of `requestFaucet` module added.
+5. **logger.test.ts** — Updated faucetUser test calls to match new signature.
+
+#### Frontend: ClearnodeProvider Updates
+1. **lib/clearnode/types.ts** — Added `expiresAt`, `allowanceAmount`, `setAllowanceAmount` to `ClearnodeContextValue`
+2. **providers/ClearnodeProvider.tsx** — Added `allowanceAmount` state (default 1000), `setAllowanceAmount` setter, exposed `expiresAt` in context. Passes custom allowance to `authenticateBrowser()`.
+3. **providers/ClearnodeProvider.test.tsx** — Added 4 tests: expiresAt exposed, allowanceAmount default, setAllowanceAmount updates, allowance passed to auth
+
+#### Frontend: API + Types
+1. **lib/types.ts** — Added `UserFaucetResponse` interface
+2. **lib/api.ts** — Added `requestUserFaucet(address, count?)` function
+3. **lib/api.test.ts** — Added 2 tests for requestUserFaucet
+
+#### Frontend: Account Components (new)
+1. **components/account/SessionCard.tsx** — Session status badge (Active/Expired/Connecting/Error/Not Authenticated), expiry time display, allowance input, re-authenticate button
+2. **components/account/AccountBalanceCard.tsx** — Balance display ($X.XX from raw/1M), refresh button, not-connected state
+3. **components/account/AccountFaucetCard.tsx** — Preset amounts ($10/$50/$100/$500), custom input (multiples of $10), calls requestUserFaucet + refreshBalance, success/warning/error states
+4. **components/account/index.ts** — Barrel export
+
+#### Frontend: Page + Navigation
+1. **app/account/page.tsx** — 3-card layout: SessionCard (full width), FaucetCard (2/3), BalanceCard (1/3). Uses refreshKey pattern.
+2. **components/Header.tsx** — Added "Account" nav link with data-testid="nav-account"
+3. **components/Header.test.tsx** — Updated to verify Account link presence
+
+#### Test Files (new)
+- `SessionCard.test.tsx` — 10 tests (status badges, expiry, reconnect, disabled state, allowance input)
+- `AccountBalanceCard.test.tsx` — 5 tests (not-connected, balance display, null balance, refresh, large balance)
+- `AccountFaucetCard.test.tsx` — 9 tests (presets, selection, custom input, submit, loading, success, partial failure, error, onFunded + refreshBalance callback)
+
+### Test Results
+- **Hub:** 204 passed (was 200, +4 new user faucet route tests)
+- **Frontend:** 158 passed (was 128, +30 new: 4 provider + 2 api + 10 session + 5 balance + 9 faucet)
+- **Dashboard:** 26 passed (unchanged)
+- **Total:** 388 passing tests
+
+### Architecture Notes
+- User faucet routes through hub (avoids CORS issues with sandbox faucet direct call)
+- Allowance is stored in ClearnodeProvider state; changing it requires re-authentication
+- Session expiry and validity exposed in context for UI display
+- AccountFaucetCard calls both onFunded callback (refreshKey) and refreshBalance (Clearnode balance)
+- Same refreshKey pattern as MM page for faucet → balance refresh coordination
+
+---
+
+## Dashboard Upgrade: Fullscreen Interactive TUI
+Date: 2026-02-05
+
+### What was done:
+Upgraded the `packages/dashboard/` terminal app from a simple read-only view to a fullscreen, interactive TUI with alternate screen buffer, dynamic sizing, panel navigation, scrollable panels, vim-style command bar, and visual price bars.
+
+### New files:
+1. **`hooks/useTerminalSize.ts`** — Hook returning `{ columns, rows }` from `process.stdout`, updates on resize, fallback 80x24
+2. **`components/PriceBar.tsx`** — ASCII progress bar (`█░`) for BALL/STRIKE odds visualization
+3. **`components/CommandBar.tsx`** — Footer component: keybinding hints (normal), command input (command mode), status messages
+4. **`components/HelpOverlay.tsx`** — Keybinding reference screen (press `?` to toggle)
+
+### Modified files:
+1. **`hooks/useWebSocket.ts`** — Added `reconnect()` to `UseWebSocketResult` interface and return value
+2. **`utils/formatters.ts`** — Added `renderPriceBar(probability, width)` pure function
+3. **`index.tsx`** — Alternate screen buffer enter/exit (`\x1b[?1049h/l`), cursor hide/show, signal handlers (SIGINT, SIGTERM, uncaughtException), passes `hubUrl` prop to App
+4. **`App.tsx`** — Major rewrite:
+   - Fullscreen layout with `height={rows}` from useTerminalSize
+   - Panel navigation (Tab to switch, j/k to scroll, g/G for top/bottom)
+   - Command mode (`:clear`, `:reset`, `:reconnect`, `:quit`)
+   - Help mode (press `?`)
+   - Auto-scroll event log to bottom (disabled when user manually scrolls up, re-enabled on `G`)
+   - Dynamic visible count calculation based on terminal rows
+   - Price bar width derived from `columns / 2 - 6`
+5. **`components/MarketPanel.tsx`** — Replaced plain text odds with PriceBar components, accepts `barWidth` prop
+6. **`components/PositionsPanel.tsx`** — Scrollable with `scrollOffset`/`visibleCount`/`isActive` props, cyan border when active, scroll indicator
+7. **`components/EventLog.tsx`** — Same scrollable pattern as PositionsPanel, chronological order (oldest first)
+8. **`components/SystemInfo.tsx`** — Added `flexShrink={0}` for layout stability
+9. **`components/index.ts`** — Added PriceBar, CommandBar, HelpOverlay exports
+10. **`hooks/index.ts`** — Added useTerminalSize export
+11. **`README.md`** — Updated with new layout diagram, controls tables, commands, architecture notes
+
+### Test Results:
+- **Dashboard:** 33 passed (was 26, +7 new renderPriceBar tests)
+- TypeScript: zero errors (`tsc --noEmit` clean)
+
+### Controls:
+- **Tab** — Switch active panel (Positions ↔ Event Log)
+- **j/↓, k/↑** — Scroll active panel
+- **g/G** — Top/bottom of active panel
+- **?** — Toggle help overlay
+- **:** — Enter command mode
+- **q** — Quit
+- **:clear/:c** — Clear event log
+- **:reset/:r** — POST /api/admin/reset
+- **:reconnect** — Reconnect WebSocket
+- **:quit/:q** — Quit
+
+### Architecture Notes:
+- Alternate screen buffer ensures terminal history is preserved
+- `useTerminalSize` listens to `process.stdout.on('resize')` for dynamic layout
+- Event log auto-scrolls to bottom unless user manually scrolled up; pressing `G` re-enables auto-scroll
+- `reconnect()` in useWebSocket closes current WS, clears timeout, resets attempts, and reconnects
+- `renderPriceBar()` is a pure function for testability — PriceBar component just renders its output
+- No new npm dependencies required
+
+---
+
+## Clearnode Client Methods: Hub + Frontend
+Date: 2026-02-05
+
+### What was done:
+Added `createAppSession`, `getAppSessions` to the Hub ClearnodeClient, and a full set of pure RPC method functions for the Frontend. Integrated all methods into the ClearnodeProvider context.
+
+### Hub Changes
+1. **types.ts** — Added `CreateAppSessionParams`, `CreateAppSessionResult`, `AppSessionInfo` interfaces
+2. **client.ts** — Added `createAppSession()` and `getAppSessions()` methods with new nitrolite SDK imports (`createAppSessionMessage`, `parseCreateAppSessionResponse`, `createGetAppSessionsMessage`, `parseGetAppSessionsResponse`, `RPCProtocolVersion`, `RPCChannelStatus`)
+3. **client.test.ts** — Added 8 tests in 2 new describe blocks: createAppSession (4 tests), getAppSessions (4 tests)
+4. **context.ts** — Added `createAppSession` and `getAppSessions` to mockClearnode in `createTestContext()`
+
+### Frontend Changes
+1. **lib/clearnode/methods.ts** (new) — 6 pure async RPC functions: `createAppSession`, `closeAppSession`, `submitAppState`, `transfer`, `getAppSessions`, `getConfig`. Each takes `(ws, signer, ...)` — testable without React.
+2. **lib/clearnode/methods.test.ts** (new) — 17 tests covering all 6 methods (correct SDK calls, return values, throws when not connected)
+3. **test/mocks/nitroliteModule.ts** — Added 14 new mock exports for all app session, state, transfer, config SDK functions + RPCAppStateIntent and RPCProtocolVersion enums
+4. **lib/clearnode/index.ts** — Added `export * from './methods'`
+5. **lib/clearnode/types.ts** — Extended `ClearnodeContextValue` with 6 new method signatures
+6. **providers/ClearnodeProvider.tsx** — Added 6 useCallback wrappers that capture wsRef/signer/address, updated default context with error-throwing stubs
+7. **providers/ClearnodeProvider.test.tsx** — Added 6 tests verifying each method delegates correctly when connected
+
+### Also fixed:
+- Removed unused `waitFor` import from `SessionCard.test.tsx` (pre-existing lint issue)
+
+### Test Results
+- **Hub:** 212 passed (was 204, +8 new clearnode client tests)
+- **Frontend:** 181 passed (was 158, +17 methods + 6 provider)
+- **Frontend build:** ✅ succeeds
+- **Total:** 393+ passing tests
+
+### Architecture Notes
+- Frontend methods are pure functions (not hooks/components) for easier testing
+- `getConfig` uses V2 variant (synchronous, no signer needed)
+- `createAppSession` defaults to `pulse-play` application, NitroRPC/0.4 protocol, weights [0, 100] quorum 100 (bettor has 0 weight, MM has 100 = full control)
+- All methods use `assertReady()` guard that checks WS readyState and signer presence
+- Provider uses `useCallback` with dependency on `signer` and `address` for React memoization
+
+---
+
+## Bug Fixes: Account Page Issues
+Date: 2026-02-05
+
+### Bug 1: Allowance input triggers re-authentication on every keystroke
+**Root cause:** `allowanceAmount` was in the dependency array of `authenticate` (useCallback), which was in the dependency array of the auto-connect `useEffect`. Changing the input → new state → new callback ref → useEffect re-fires → calls `authenticate()`.
+**Fix:** Added `allowanceAmountRef` (useRef) synced via a useEffect. `authenticate` now reads `allowanceAmountRef.current` instead of `allowanceAmount`, removing it from the callback dependency array.
+**Files:** `ClearnodeProvider.tsx`, `ClearnodeProvider.test.tsx` (+1 test: changing allowance does not trigger re-auth)
+
+### Bug 2: Fund Account shows `{"error":"amount must be a positive number"}`
+**Root cause:** Stale `dist/` build had old faucet validation code. Source TypeScript was already correct.
+**Fix:** Rebuilt with `pnpm --filter @pulse-play/hub build`. No code changes needed.
+
+### Bug 3: Balance card not visible on Bettor page
+**Root cause:** `AccountBalanceCard` only existed on `/account` page, not the bettor page.
+**Fix:** Imported `AccountBalanceCard` into `app/page.tsx` and placed it above `PositionList` in the right sidebar.
+
+### Test Results
+- **Hub:** 212 passed (unchanged)
+- **Frontend:** 182 passed (was 181, +1 new re-auth guard test)
+- **Dashboard:** 33 passed (unchanged)
+- **Total:** 427 passing tests

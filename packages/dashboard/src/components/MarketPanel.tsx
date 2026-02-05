@@ -1,19 +1,17 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import type { AdminStateResponse } from '../types.js';
-import {
-  formatOdds,
-  formatAmericanOdds,
-  getStatusColor,
-} from '../utils/formatters.js';
+import { getStatusColor } from '../utils/formatters.js';
+import { PriceBar } from './PriceBar.js';
 
 interface MarketPanelProps {
   state: AdminStateResponse | null;
   priceBall: number;
   priceStrike: number;
+  barWidth?: number;
 }
 
-export function MarketPanel({ state, priceBall, priceStrike }: MarketPanelProps) {
+export function MarketPanel({ state, priceBall, priceStrike, barWidth = 20 }: MarketPanelProps) {
   const market = state?.market;
   const statusColor = market ? getStatusColor(market.status) : 'gray';
 
@@ -37,16 +35,21 @@ export function MarketPanel({ state, priceBall, priceStrike }: MarketPanelProps)
             )}
           </Box>
 
-          <Box marginTop={1}>
-            <Text color="cyan" bold>BALL:   </Text>
-            <Text color="cyan">{formatOdds(priceBall)}</Text>
-            <Text color="gray"> ({formatAmericanOdds(priceBall)})</Text>
+          <Box marginTop={1} flexDirection="column">
+            <PriceBar
+              label="BALL"
+              probability={priceBall}
+              color="cyan"
+              width={barWidth}
+            />
           </Box>
-
-          <Box>
-            <Text color="magenta" bold>STRIKE: </Text>
-            <Text color="magenta">{formatOdds(priceStrike)}</Text>
-            <Text color="gray"> ({formatAmericanOdds(priceStrike)})</Text>
+          <Box marginTop={1} flexDirection="column">
+            <PriceBar
+              label="STRIKE"
+              probability={priceStrike}
+              color="magenta"
+              width={barWidth}
+            />
           </Box>
 
           <Box marginTop={1}>

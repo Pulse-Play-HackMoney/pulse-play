@@ -21,7 +21,7 @@ export function SystemInfo({
   adminLoading,
 }: SystemInfoProps) {
   return (
-    <Box flexDirection="column" borderStyle="single" paddingX={1}>
+    <Box flexDirection="column" borderStyle="single" paddingX={1} flexShrink={0}>
       <Box justifyContent="center">
         <Text bold color="white">
           SYSTEM

@@ -8,6 +8,7 @@ import {
   getOutcomeColor,
   formatDollars,
   formatShares,
+  renderPriceBar,
 } from './formatters.js';
 import type { WsMessage } from '../types.js';
 
@@ -225,5 +226,38 @@ describe('formatShares', () => {
     expect(formatShares(10)).toBe('10.00');
     expect(formatShares(12.345)).toBe('12.35');
     expect(formatShares(0.5)).toBe('0.50');
+  });
+});
+
+describe('renderPriceBar', () => {
+  it('returns all filled for probability 1', () => {
+    expect(renderPriceBar(1, 20)).toEqual({ filled: 20, empty: 0 });
+  });
+
+  it('returns all empty for probability 0', () => {
+    expect(renderPriceBar(0, 20)).toEqual({ filled: 0, empty: 20 });
+  });
+
+  it('returns half and half for probability 0.5', () => {
+    expect(renderPriceBar(0.5, 20)).toEqual({ filled: 10, empty: 10 });
+  });
+
+  it('rounds correctly', () => {
+    // 0.33 * 10 = 3.3 → rounds to 3
+    expect(renderPriceBar(0.33, 10)).toEqual({ filled: 3, empty: 7 });
+    // 0.67 * 10 = 6.7 → rounds to 7
+    expect(renderPriceBar(0.67, 10)).toEqual({ filled: 7, empty: 3 });
+  });
+
+  it('clamps probability above 1', () => {
+    expect(renderPriceBar(1.5, 10)).toEqual({ filled: 10, empty: 0 });
+  });
+
+  it('clamps probability below 0', () => {
+    expect(renderPriceBar(-0.5, 10)).toEqual({ filled: 0, empty: 10 });
+  });
+
+  it('handles width of 0', () => {
+    expect(renderPriceBar(0.5, 0)).toEqual({ filled: 0, empty: 0 });
   });
 });

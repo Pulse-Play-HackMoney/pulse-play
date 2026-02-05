@@ -5,7 +5,9 @@ import { formatTime } from '../utils/formatters.js';
 
 interface EventLogProps {
   events: EventLogEntry[];
-  maxDisplay?: number;
+  scrollOffset: number;
+  visibleCount: number;
+  isActive: boolean;
 }
 
 function getEventTypeColor(type: string): string {
@@ -23,21 +25,34 @@ function getEventTypeColor(type: string): string {
   }
 }
 
-export function EventLog({ events, maxDisplay = 8 }: EventLogProps) {
-  // Show most recent events first, limit to maxDisplay
-  const displayEvents = events.slice(-maxDisplay).reverse();
+export function EventLog({ events, scrollOffset, visibleCount, isActive }: EventLogProps) {
+  // Chronological order (oldest first), sliced to visible window
+  const displayEvents = events.slice(scrollOffset, scrollOffset + visibleCount);
+  const endIndex = Math.min(scrollOffset + visibleCount, events.length);
+  const showIndicator = events.length > visibleCount;
 
   return (
-    <Box flexDirection="column" borderStyle="single" paddingX={1}>
-      <Box justifyContent="center">
+    <Box
+      flexDirection="column"
+      borderStyle="single"
+      borderColor={isActive ? 'cyan' : undefined}
+      paddingX={1}
+      flexGrow={1}
+    >
+      <Box justifyContent="center" gap={1}>
         <Text bold color="white">
           EVENT LOG
         </Text>
+        {showIndicator && (
+          <Text color="gray" dimColor>
+            {scrollOffset + 1}-{endIndex} of {events.length}
+          </Text>
+        )}
       </Box>
 
       {displayEvents.length > 0 ? (
         displayEvents.map((event, idx) => (
-          <Box key={`${event.timestamp.getTime()}-${idx}`} gap={1}>
+          <Box key={`${event.timestamp.getTime()}-${scrollOffset + idx}`} gap={1}>
             <Text color="gray">{formatTime(event.timestamp)}</Text>
             <Text color={getEventTypeColor(event.type)}>[{event.type}]</Text>
             <Text>{event.message}</Text>

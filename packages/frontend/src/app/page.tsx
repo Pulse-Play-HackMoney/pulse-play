@@ -1,6 +1,7 @@
 'use client';
 
 import { OddsDisplay, BetForm, PositionList } from '@/components/bettor';
+import { AccountBalanceCard } from '@/components/account';
 
 export default function BettorPage() {
   return (
@@ -17,7 +18,8 @@ export default function BettorPage() {
           <OddsDisplay />
           <BetForm />
         </div>
-        <div>
+        <div className="space-y-6">
+          <AccountBalanceCard />
           <PositionList />
         </div>
       </div>

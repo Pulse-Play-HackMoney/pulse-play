@@ -110,3 +110,13 @@ export function formatDollars(amount: number): string {
 export function formatShares(shares: number): string {
   return shares.toFixed(2);
 }
+
+/**
+ * Computes the number of filled and empty characters for an ASCII price bar.
+ * Pure function — rendering logic stays testable without React.
+ */
+export function renderPriceBar(probability: number, width: number): { filled: number; empty: number } {
+  const clamped = Math.max(0, Math.min(1, probability));
+  const filled = Math.round(clamped * width);
+  return { filled, empty: width - filled };
+}

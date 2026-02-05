@@ -160,11 +160,14 @@ export const logger = {
     write(`${INDENT}${DIM}└${RESET} ${CYAN}MM info fetched${RESET}`);
   },
 
-  faucetUser(address: string, amount: number): void {
+  faucetUser(address: string, count: number = 1, error?: string): void {
     if (silent) return;
     const a = `${MAGENTA}${addr(address)}${RESET}`;
-    const amt = `${GREEN}$${amount.toFixed(2)}${RESET}`;
-    write(`${INDENT}${DIM}└${RESET} User faucet: ${a} requested ${amt}`);
+    if (!error) {
+      write(`${INDENT}${DIM}└${RESET} ${GREEN}User faucet funded${RESET} ${a} ${DIM}(${count}x)${RESET}`);
+    } else {
+      write(`${INDENT}${DIM}└${RESET} ${RED}${BOLD}ERROR${RESET}: User faucet failed ${a} — ${error} ${DIM}(${count}x requested)${RESET}`);
+    }
   },
 
   // ── Admin ──────────────────────────────────────────────────────────────

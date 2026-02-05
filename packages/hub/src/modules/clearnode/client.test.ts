@@ -114,6 +114,14 @@ const mockCreateCloseAppSession = jest
 const mockParseCloseAppSession = jest.fn();
 const mockCreateTransfer = jest.fn().mockResolvedValue("transfer_msg");
 const mockParseTransfer = jest.fn();
+const mockCreateAppSession = jest
+  .fn()
+  .mockResolvedValue("create_app_session_msg");
+const mockParseCreateAppSession = jest.fn();
+const mockCreateGetAppSessions = jest
+  .fn()
+  .mockResolvedValue("get_app_sessions_msg");
+const mockParseGetAppSessions = jest.fn();
 
 jest.mock("@erc7824/nitrolite", () => ({
   createGetLedgerBalancesMessage: (...args: any[]) =>
@@ -130,10 +138,27 @@ jest.mock("@erc7824/nitrolite", () => ({
     mockParseCloseAppSession(...args),
   createTransferMessage: (...args: any[]) => mockCreateTransfer(...args),
   parseTransferResponse: (...args: any[]) => mockParseTransfer(...args),
+  createAppSessionMessage: (...args: any[]) => mockCreateAppSession(...args),
+  parseCreateAppSessionResponse: (...args: any[]) =>
+    mockParseCreateAppSession(...args),
+  createGetAppSessionsMessage: (...args: any[]) =>
+    mockCreateGetAppSessions(...args),
+  parseGetAppSessionsResponse: (...args: any[]) =>
+    mockParseGetAppSessions(...args),
   RPCAppStateIntent: {
     Operate: "operate",
     Deposit: "deposit",
     Withdraw: "withdraw",
+  },
+  RPCProtocolVersion: {
+    NitroRPC_0_2: "NitroRPC/0.2",
+    NitroRPC_0_4: "NitroRPC/0.4",
+  },
+  RPCChannelStatus: {
+    Open: "open",
+    Closed: "closed",
+    Resizing: "resizing",
+    Challenged: "challenged",
   },
   createAuthRequestMessage: jest.fn(),
   createAuthVerifyMessageFromChallenge: jest.fn(),
@@ -455,6 +480,181 @@ describe("ClearnodeClient", () => {
 
     it("throws when not connected", async () => {
       await expect(client.transfer(params)).rejects.toThrow("not connected");
+    });
+  });
+
+  // ── createAppSession ──
+
+  describe("createAppSession()", () => {
+    const params = {
+      definition: {
+        protocol: "NitroRPC/0.4",
+        participants: [
+          "0xBettor01" as `0x${string}`,
+          MM_ADDRESS as `0x${string}`,
+        ],
+        weights: [0, 100],
+        quorum: 100,
+        challenge: 3600,
+      },
+      allocations: [
+        {
+          asset: "ytest.usd",
+          amount: "500000",
+          participant: "0xBettor01" as `0x${string}`,
+        },
+        {
+          asset: "ytest.usd",
+          amount: "500000",
+          participant: MM_ADDRESS as `0x${string}`,
+        },
+      ],
+      sessionData: '{"question":"Ball or Strike?"}',
+    };
+
+    it("sends create_app_session with correct definition and allocations", async () => {
+      await client.connect();
+      mockSendAndWait.mockResolvedValueOnce("raw");
+      mockParseCreateAppSession.mockReturnValueOnce({
+        params: {
+          appSessionId: "0xSESSION1",
+          version: 1,
+          status: "open",
+        },
+      });
+
+      await client.createAppSession(params);
+
+      expect(mockCreateAppSession).toHaveBeenCalledWith(
+        mockSigner,
+        expect.objectContaining({
+          definition: expect.objectContaining({
+            protocol: "NitroRPC/0.4",
+            participants: params.definition.participants,
+            weights: [0, 100],
+            quorum: 100,
+            application: "pulse-play",
+          }),
+          allocations: params.allocations,
+          session_data: params.sessionData,
+        }),
+      );
+    });
+
+    it("returns appSessionId, version, and status", async () => {
+      await client.connect();
+      mockSendAndWait.mockResolvedValueOnce("raw");
+      mockParseCreateAppSession.mockReturnValueOnce({
+        params: {
+          appSessionId: "0xSESSION1",
+          version: 1,
+          status: "open",
+        },
+      });
+
+      const result = await client.createAppSession(params);
+
+      expect(result).toEqual({
+        appSessionId: "0xSESSION1",
+        version: 1,
+        status: "open",
+      });
+    });
+
+    it("throws on error response", async () => {
+      await client.connect();
+      mockSendAndWait.mockRejectedValueOnce(
+        new Error("RPC error: insufficient balance"),
+      );
+
+      await expect(client.createAppSession(params)).rejects.toThrow(
+        "insufficient balance",
+      );
+    });
+
+    it("throws when not connected", async () => {
+      await expect(client.createAppSession(params)).rejects.toThrow(
+        "not connected",
+      );
+    });
+  });
+
+  // ── getAppSessions ──
+
+  describe("getAppSessions()", () => {
+    it("defaults participant to MM address when not provided", async () => {
+      await client.connect();
+      mockSendAndWait.mockResolvedValueOnce("raw");
+      mockParseGetAppSessions.mockReturnValueOnce({
+        params: { appSessions: [] },
+      });
+
+      await client.getAppSessions();
+
+      expect(mockCreateGetAppSessions).toHaveBeenCalledWith(
+        mockSigner,
+        MM_ADDRESS,
+        undefined,
+      );
+    });
+
+    it("passes explicit participant and status filter", async () => {
+      await client.connect();
+      mockSendAndWait.mockResolvedValueOnce("raw");
+      mockParseGetAppSessions.mockReturnValueOnce({
+        params: { appSessions: [] },
+      });
+
+      await client.getAppSessions("0xBettor01", "open");
+
+      expect(mockCreateGetAppSessions).toHaveBeenCalledWith(
+        mockSigner,
+        "0xBettor01",
+        "open",
+      );
+    });
+
+    it("returns mapped array of AppSessionInfo", async () => {
+      await client.connect();
+      mockSendAndWait.mockResolvedValueOnce("raw");
+      mockParseGetAppSessions.mockReturnValueOnce({
+        params: {
+          appSessions: [
+            {
+              appSessionId: "0xS1",
+              application: "pulse-play",
+              status: "open",
+              participants: ["0xA", "0xB"],
+              version: 2,
+              sessionData: '{"q":"Ball?"}',
+            },
+            {
+              appSessionId: "0xS2",
+              application: "pulse-play",
+              status: "closed",
+              participants: ["0xA", "0xC"],
+              version: 5,
+            },
+          ],
+        },
+      });
+
+      const sessions = await client.getAppSessions();
+
+      expect(sessions).toHaveLength(2);
+      expect(sessions[0]).toEqual({
+        appSessionId: "0xS1",
+        application: "pulse-play",
+        status: "open",
+        participants: ["0xA", "0xB"],
+        version: 2,
+        sessionData: '{"q":"Ball?"}',
+      });
+      expect(sessions[1].sessionData).toBeUndefined();
+    });
+
+    it("throws when not connected", async () => {
+      await expect(client.getAppSessions()).rejects.toThrow("not connected");
     });
   });
 });

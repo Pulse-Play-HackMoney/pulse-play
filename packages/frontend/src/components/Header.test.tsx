@@ -40,6 +40,7 @@ describe('Header', () => {
     expect(screen.getByTestId('nav-bettor')).toHaveTextContent('Bettor');
     expect(screen.getByTestId('nav-oracle')).toHaveTextContent('Oracle');
     expect(screen.getByTestId('nav-market-maker')).toHaveTextContent('Market Maker');
+    expect(screen.getByTestId('nav-account')).toHaveTextContent('Account');
   });
 
   it('shows WebSocket connection status', () => {

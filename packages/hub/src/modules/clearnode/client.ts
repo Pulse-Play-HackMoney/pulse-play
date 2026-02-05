@@ -11,7 +11,13 @@ import {
   parseCloseAppSessionResponse,
   createTransferMessage,
   parseTransferResponse,
+  createAppSessionMessage,
+  parseCreateAppSessionResponse,
+  createGetAppSessionsMessage,
+  parseGetAppSessionsResponse,
   RPCAppStateIntent,
+  RPCProtocolVersion,
+  RPCChannelStatus,
   type MessageSigner,
 } from "@erc7824/nitrolite";
 import { sendAndWait } from "./rpc.js";
@@ -22,6 +28,9 @@ import type {
   SubmitAppStateParams,
   CloseSessionParams,
   TransferParams,
+  CreateAppSessionParams,
+  CreateAppSessionResult,
+  AppSessionInfo,
 } from "./types.js";
 
 const INTENT_MAP: Record<string, RPCAppStateIntent> = {
@@ -157,6 +166,66 @@ export class ClearnodeClient {
 
     const raw = await sendAndWait(this.ws!, msg, "transfer");
     parseTransferResponse(raw);
+  }
+
+  /** Create an app session (e.g. a betting channel between bettor and MM). */
+  async createAppSession(
+    params: CreateAppSessionParams,
+  ): Promise<CreateAppSessionResult> {
+    this.assertConnected();
+
+    const msg = await createAppSessionMessage(this.signer!, {
+      definition: {
+        protocol: RPCProtocolVersion.NitroRPC_0_4,
+        participants: params.definition.participants,
+        weights: params.definition.weights,
+        quorum: params.definition.quorum,
+        challenge: params.definition.challenge,
+        nonce: params.definition.nonce ?? Date.now(),
+        application: this.config.application,
+      },
+      allocations: params.allocations,
+      session_data: params.sessionData,
+    });
+
+    const raw = await sendAndWait(this.ws!, msg, "create_app_session");
+    const response = parseCreateAppSessionResponse(raw);
+    return {
+      appSessionId: response.params.appSessionId,
+      version: response.params.version,
+      status: String(response.params.status),
+    };
+  }
+
+  /** Query app sessions, optionally filtered by participant and status. */
+  async getAppSessions(
+    participant?: string,
+    status?: string,
+  ): Promise<AppSessionInfo[]> {
+    this.assertConnected();
+
+    const addr = (participant ?? this.mmAddress) as `0x${string}`;
+    const channelStatus = status
+      ? (status as RPCChannelStatus)
+      : undefined;
+
+    const msg = await createGetAppSessionsMessage(
+      this.signer!,
+      addr,
+      channelStatus,
+    );
+
+    const raw = await sendAndWait(this.ws!, msg, "get_app_sessions");
+    const response = parseGetAppSessionsResponse(raw);
+
+    return response.params.appSessions.map((s: any) => ({
+      appSessionId: s.appSessionId,
+      application: s.application,
+      status: String(s.status),
+      participants: s.participants,
+      version: s.version,
+      sessionData: s.sessionData,
+    }));
   }
 
   /** Get the MM wallet address. */

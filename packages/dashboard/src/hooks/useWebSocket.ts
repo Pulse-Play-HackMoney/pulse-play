@@ -7,6 +7,7 @@ export interface UseWebSocketResult {
   lastMessage: WsMessage | null;
   error: string | null;
   reconnectAttempts: number;
+  reconnect: () => void;
 }
 
 const RECONNECT_DELAY_MS = 3000;
@@ -75,6 +76,21 @@ export function useWebSocket(url: string): UseWebSocketResult {
     }
   }, [url]);
 
+  const reconnect = useCallback(() => {
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+    setReconnectAttempts(0);
+    setConnected(false);
+    setError(null);
+    connect();
+  }, [connect]);
+
   useEffect(() => {
     mountedRef.current = true;
     connect();
@@ -91,5 +107,5 @@ export function useWebSocket(url: string): UseWebSocketResult {
     };
   }, [connect]);
 
-  return { connected, lastMessage, error, reconnectAttempts };
+  return { connected, lastMessage, error, reconnectAttempts, reconnect };
 }

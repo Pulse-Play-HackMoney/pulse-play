@@ -17,7 +17,9 @@ describe('Logger', () => {
     expect(() => logger.faucetMM(true, 3)).not.toThrow();
     expect(() => logger.faucetMM(false, 1, 'timeout')).not.toThrow();
     expect(() => logger.mmInfoFetched()).not.toThrow();
-    expect(() => logger.faucetUser('0xAlice', 100)).not.toThrow();
+    expect(() => logger.faucetUser('0xAlice')).not.toThrow();
+    expect(() => logger.faucetUser('0xAlice', 3)).not.toThrow();
+    expect(() => logger.faucetUser('0xAlice', 1, 'timeout')).not.toThrow();
     expect(() => logger.adminReset()).not.toThrow();
     expect(() => logger.clearnodeConnected('0xMM1234567890')).not.toThrow();
     expect(() => logger.clearnodeDisconnected()).not.toThrow();
@@ -44,7 +46,7 @@ describe('Logger', () => {
     logger.marketResolved('m1', 'BALL', 1, 0, 10);
     logger.gameStateChanged(true);
     logger.faucetMM(true);
-    logger.faucetUser('0x1', 50);
+    logger.faucetUser('0x1');
     logger.adminReset();
     logger.clearnodeConnected('0xMM1234567890');
     logger.clearnodeDisconnected();
