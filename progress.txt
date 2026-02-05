@@ -463,3 +463,200 @@ Extended the frontend's MarketProvider to handle all WebSocket message types and
 - Eliminated /api/admin/state polling from frontend
 - Consistent state sync architecture across dashboard and frontend
 - All state flows through WebSocket → MarketProvider → components
+
+---
+
+## Fix: Dashboard market-id not updating & odds not resetting on new market
+Date: 2026-02-05
+
+### Bugs Fixed
+
+**Bug 1: Dashboard market-id not updating**
+- MARKET_STATUS handler in `dashboard/src/App.tsx` spread `prev.market` without updating `id`
+- When market-2 opened, dashboard still showed market-1's ID
+
+**Bug 2: Odds not resetting on new market**
+- No ODDS_UPDATE broadcast when a new market opened (hub)
+- Dashboard & frontend preserved old `qBall`/`qStrike` values via spread
+- Old odds persisted because only bets triggered ODDS_UPDATE
+
+### Changes
+
+1. **Hub (`oracle.routes.ts`)** — Added `getPrice` import and ODDS_UPDATE broadcast after MARKET_STATUS in market open handler. New market now broadcasts both MARKET_STATUS(OPEN) and ODDS_UPDATE(0.5/0.5).
+
+2. **Dashboard (`App.tsx`)** — Rewrote MARKET_STATUS handler to detect new market by comparing `prev.market.id !== msg.marketId`. When new: creates fresh market object, clears positions, resets prices to 50/50. When same market: updates status/outcome and always copies `msg.marketId`.
+
+3. **Frontend (`MarketProvider.tsx`)** — Rewrote MARKET_STATUS handler with same new-market detection. When new market: resets qBall/qStrike/b, prices to 50/50, positionCount to 0. Always copies `message.marketId` into market state. Still triggers refetch on OPEN/RESOLVED.
+
+### Tests Added
+- Hub: +1 test — `broadcasts ODDS_UPDATE with 50/50 prices on market open`
+- Frontend: +2 tests — `updates market ID when MARKET_STATUS arrives with new marketId`, `resets prices and positionCount for new market`
+
+### Test Results
+- **Hub:** 193 passed (was 192)
+- **Frontend:** 83 passed (was 81)
+- **Dashboard:** 26 passed (unchanged)
+- **Total:** 302 passing tests
+
+---
+
+## Fix: Double WebSocket Connection in Frontend (StrictMode)
+Date: 2026-02-05
+
+### Root Cause
+React StrictMode double-invokes effects in development: mount → unmount → mount. The cleanup function called `ws.close()`, which fired `onclose` and scheduled a reconnect via `setTimeout(connect, 3000)`. Since `reconnectTimeoutRef` was already `null` at that point, the orphaned timeout was never cleared. Result: two connections per address (one immediate from re-mount, one 3 seconds later from orphaned reconnect).
+
+### Fix
+Added `intentionalClose` closure variable in the `useEffect`. Set to `true` in the cleanup function **before** calling `ws.close()`. The `onclose` handler checks this flag and skips reconnection when the close was intentional.
+
+### Files Changed
+- `packages/frontend/src/providers/WebSocketProvider.tsx` — added `intentionalClose` guard
+- `packages/frontend/src/providers/WebSocketProvider.test.tsx` — added cleanup test
+
+### Test Results
+- **Frontend:** 84 passed (was 83, +1 new cleanup test)
+- **Total:** 303 passing tests
+
+---
+
+## Market Maker Overview Page
+Date: 2026-02-05
+
+### What was done:
+
+#### Hub Changes
+1. **types.ts** — Added `MMFaucetRequest` (optional count) and `MMInfoResponse` (address, balance, isConnected)
+2. **logger.ts** — Updated `faucetMM()` signature to include count parameter; added `mmInfoFetched()` method
+3. **mm.routes.ts** (new) — `GET /api/mm/info` returns MM wallet address, balance, and connection status
+4. **faucet.routes.ts** — Modified `POST /api/faucet/mm` to accept `{ count?: number }` (default 1, capped at 50). Loops count times calling `requestFaucet()`. Returns partial results on mid-loop failure.
+5. **app.ts** — Registered `registerMMRoutes(app, ctx)`
+6. **mm.routes.test.ts** (new) — 2 tests (info endpoint success + error handling)
+7. **faucet.routes.test.ts** — Added 4 new tests (count=3, no body default, count>50 rejection, partial failure)
+
+#### Frontend Changes
+1. **types.ts** — Added `MMInfoResponse` and `MMFaucetResponse` interfaces
+2. **api.ts** — Added `getMMInfo()` and `requestMMFaucet(count)` functions
+3. **api.test.ts** — Added 3 tests for new API functions
+4. **Header.tsx** — Added "Market Maker" nav link with `data-testid="nav-market-maker"`
+5. **Header.test.tsx** — Updated to verify Market Maker link presence
+6. **market-maker/page.tsx** (new) — Page with 2-column grid (2/3 + 1/3): MMFaucetCard left, MMBalanceCard right. Uses refreshKey pattern for faucet→balance refresh.
+7. **market-maker/MMBalanceCard.tsx** (new) — Displays truncated address (copy-to-clipboard), balance formatted as $ (raw/1,000,000), connection status badge, refresh button. Loading skeleton + error states.
+8. **market-maker/MMFaucetCard.tsx** (new) — Preset amounts ($10, $50, $100, $500), custom input (multiples of $10), divides by 10 for count. Shows success/warning/error states. Calls onFunded callback for balance refresh.
+9. **market-maker/index.ts** (new) — Barrel export
+10. **MMBalanceCard.test.tsx** (new) — 5 tests (loading, display, refresh, error, disconnected)
+11. **MMFaucetCard.test.tsx** (new) — 9 tests (presets, selection, custom input, submit, loading, success, partial failure, error, onFunded callback)
+
+### Test Results
+- **Hub:** 199 passed (was 193, +6 new: 2 mm routes + 4 faucet batch)
+- **Frontend:** 104 passed (was 84, +20 new: 3 api + 1 header + 5 balance + 9 faucet + 2 unused)
+- **Dashboard:** 26 passed (unchanged)
+- **Total:** 329 passing tests
+
+### Architecture Notes
+- MMBalanceCard uses `refreshKey` prop to trigger re-fetch after faucet funding
+- Balance formatted by dividing raw string by 1,000,000 (ytest.usdc uses 6 decimals)
+- Faucet batch: count = selectedAmount / 10 (each faucet request = $10 ytest.usdc)
+- Partial failure returns `{ success: true, funded: N, requested: count, error: string }` — no 500 if at least one succeeded
+
+---
+
+## Fix: GET /api/mm/info crash when ClearnodeClient disconnected
+Date: 2026-02-05
+
+### Problem
+`GET /api/mm/info` threw 500 with `"ClearnodeClient is not connected"` because `getBalance()` calls `assertConnected()` internally. When the hub starts without Clearnode credentials or the WebSocket hasn't connected, the endpoint crashed.
+
+### Fix
+- Check `isConnected()` before calling `getBalance()`. When disconnected, return `balance: "0"` instead of crashing.
+- Moved `isConnected` check before `getBalance` call so it gates the balance fetch.
+
+### Files Changed
+- `packages/hub/src/api/mm.routes.ts` — Reordered: get address → check isConnected → conditionally get balance
+- `packages/hub/src/api/mm.routes.test.ts` — Added test: disconnected case returns 200 with `{ address: "0xMM", balance: "0", isConnected: false }`
+
+### Test Results
+- **Hub:** 200 passed (was 199, +1 new disconnected test)
+- **Total:** 330 passing tests
+
+---
+
+## Fix: Connect ClearnodeClient on server startup
+Date: 2026-02-05
+
+### Problem
+`clearnodeClient.connect()` was never called in `server.ts`. The client was constructed but the WebSocket + EIP-712 auth handshake was never initiated, meaning `isConnected()` was always `false` in production and all WebSocket-dependent operations would fail.
+
+### Fix
+1. **server.ts** — Added `await clearnodeClient.connect()` after `app.listen()` in a try/catch. On success logs `clearnodeConnected`, on failure logs error + `clearnodeDisconnected`. Server stays up either way (degraded mode — faucet HTTP still works, `mm/info` returns `balance: "0"`).
+2. **logger.ts** — Added `clearnodeConnected(address)` and `clearnodeDisconnected()` methods with ANSI formatting.
+3. **logger.test.ts** — Added both methods to existing test blocks (callable + no stdout in test env).
+4. **context.ts** — Verified: mock already had `connect` and `disconnect` — no changes needed.
+
+### Test Results
+- **Hub:** 200 passed (unchanged count, existing tests still pass)
+- **Total:** 330 passing tests
+
+---
+
+## Frontend ClearnodeProvider Implementation
+Date: 2026-02-05
+
+### What was done:
+Implemented a `ClearnodeProvider` that authenticates the bettor's wallet with the Yellow Network Clearnode on wallet connect, obtains a session key, and exposes the signer/WS for future Clearnode operations.
+
+#### New files:
+1. **`lib/clearnode/types.ts`** — `ClearnodeStatus`, `ClearnodeContextValue`, `AuthResult` types
+2. **`lib/clearnode/rpc.ts`** — Browser-compatible `sendAndWaitBrowser()` and `openClearnodeWs()` (ported from yellow-quickstart)
+3. **`lib/clearnode/auth.ts`** — Browser-compatible 3-step EIP-712 auth (`authenticateBrowser()`) mirroring hub's auth.ts
+4. **`lib/clearnode/index.ts`** — Barrel re-export
+5. **`providers/ClearnodeProvider.tsx`** — React context provider with auto-auth on wallet connect, balance fetch, reconnect/disconnect
+6. **`hooks/useClearnode.ts`** — Convenience hook re-export
+7. **`test/mocks/nitroliteModule.ts`** — Jest mock for `@erc7824/nitrolite` SDK
+
+#### Test files:
+- `lib/clearnode/rpc.test.ts` — 8 tests (sendAndWaitBrowser: resolve, ignore non-matching, RPC error, timeout, cleanup, unparseable; openClearnodeWs: resolve on open, reject on error)
+- `lib/clearnode/auth.test.ts` — 6 tests (full 3-step flow, no account, verify fail, propagate errors, custom config, default config)
+- `providers/ClearnodeProvider.test.tsx` — 10 tests (disconnected, auto-auth, balance fetch, WS fail, auth fail, ws ref, disconnect cleanup, reconnect, unmount cleanup, balance fetch fail)
+
+#### Modified files:
+- **`package.json`** — Added `@erc7824/nitrolite@^0.5.3` dependency
+- **`jest.config.js`** — Added `@erc7824/nitrolite` and `viem/chains` module name mappers
+- **`lib/config.ts`** — Added `CLEARNODE_URL` export
+- **`test/mocks/wagmiModule.ts`** — Added `useWalletClient` mock + `__setMockWalletClient()` test utility
+- **`test/mocks/viemModule.ts`** — Updated `createWalletClient` to accept options including account
+- **`app/LayoutInner.tsx`** — Inserted `ClearnodeProvider` between `WagmiProvider` and `WebSocketProvider`
+- **`providers/index.ts`** — Added ClearnodeProvider + useClearnode exports
+- **`.env.local.example`** — Added `NEXT_PUBLIC_CLEARNODE_URL`
+
+### Provider hierarchy:
+```
+WagmiProvider              (wallet: MetaMask or private-key)
+  ClearnodeProvider        (Clearnode WS auth, session key, balance)
+    WebSocketProvider      (Hub WS: market updates)
+      MarketProvider       (market state)
+```
+
+### Context interface:
+```typescript
+interface ClearnodeContextValue {
+  status: 'disconnected' | 'connecting' | 'authenticating' | 'connected' | 'error';
+  error: string | null;
+  isSessionValid: boolean;
+  signer: MessageSigner | null;
+  ws: WebSocket | null;
+  balance: string | null;
+  refreshBalance: () => Promise<void>;
+  reconnect: () => Promise<void>;
+  disconnect: () => void;
+}
+```
+
+### Auth flow:
+- Private-key mode: auto-creates WalletClient from env var, signs EIP-712 automatically
+- MetaMask mode: waits for wagmi's useWalletClient to be available, then delegates signing to MetaMask
+- Both modes: opens WS → 3-step EIP-712 auth → stores session signer → fetches balance
+- Session expiry tracked via `expiresAt` + `isSessionValid` computed property
+
+### Test Results
+- **Frontend:** 128 passed (was 104, +24 new: 8 rpc + 6 auth + 10 provider)
+- **Total:** 354 passing tests

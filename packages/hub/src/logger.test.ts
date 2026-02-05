@@ -14,9 +14,13 @@ describe('Logger', () => {
     expect(() => logger.gameStateChanged(true)).not.toThrow();
     expect(() => logger.gameStateChanged(false)).not.toThrow();
     expect(() => logger.faucetMM(true)).not.toThrow();
-    expect(() => logger.faucetMM(false, 'timeout')).not.toThrow();
+    expect(() => logger.faucetMM(true, 3)).not.toThrow();
+    expect(() => logger.faucetMM(false, 1, 'timeout')).not.toThrow();
+    expect(() => logger.mmInfoFetched()).not.toThrow();
     expect(() => logger.faucetUser('0xAlice', 100)).not.toThrow();
     expect(() => logger.adminReset()).not.toThrow();
+    expect(() => logger.clearnodeConnected('0xMM1234567890')).not.toThrow();
+    expect(() => logger.clearnodeDisconnected()).not.toThrow();
     expect(() => logger.wsConnect('0xAlice', 3)).not.toThrow();
     expect(() => logger.wsConnect(null, 1)).not.toThrow();
     expect(() => logger.wsDisconnect('0xBob', 2)).not.toThrow();
@@ -42,6 +46,8 @@ describe('Logger', () => {
     logger.faucetMM(true);
     logger.faucetUser('0x1', 50);
     logger.adminReset();
+    logger.clearnodeConnected('0xMM1234567890');
+    logger.clearnodeDisconnected();
     logger.wsConnect('0x1', 1);
     logger.wsDisconnect('0x1', 0);
     logger.broadcast('TEST', 2);

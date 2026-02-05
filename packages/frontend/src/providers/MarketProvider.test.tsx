@@ -252,6 +252,153 @@ describe('MarketProvider', () => {
     });
   });
 
+  it('updates market ID when MARKET_STATUS arrives with new marketId', async () => {
+    mockGetMarket
+      .mockResolvedValueOnce({
+        market: {
+          id: 'market-1',
+          status: 'OPEN',
+          outcome: null,
+          qBall: 10,
+          qStrike: 5,
+          b: 100,
+        },
+        priceBall: 0.55,
+        priceStrike: 0.45,
+      })
+      .mockResolvedValueOnce({
+        market: {
+          id: 'market-2',
+          status: 'OPEN',
+          outcome: null,
+          qBall: 0,
+          qStrike: 0,
+          b: 100,
+        },
+        priceBall: 0.5,
+        priceStrike: 0.5,
+      });
+
+    render(
+      <TestWrapper>
+        <MarketProvider>
+          <MarketConsumer />
+        </MarketProvider>
+      </TestWrapper>
+    );
+
+    const ws = MockWebSocket.getLastInstance()!;
+
+    await act(async () => {
+      ws.simulateOpen();
+      await flushPromises();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('market-id')).toHaveTextContent('market-1');
+    });
+
+    // New market opens with different ID
+    await act(async () => {
+      ws.simulateMessage({
+        type: 'MARKET_STATUS',
+        status: 'OPEN',
+        marketId: 'market-2',
+      });
+      await flushPromises();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('market-id')).toHaveTextContent('market-2');
+    });
+  });
+
+  it('resets prices and positionCount for new market', async () => {
+    mockGetMarket
+      .mockResolvedValueOnce({
+        market: {
+          id: 'market-1',
+          status: 'OPEN',
+          outcome: null,
+          qBall: 10,
+          qStrike: 5,
+          b: 100,
+        },
+        priceBall: 0.55,
+        priceStrike: 0.45,
+      })
+      .mockResolvedValueOnce({
+        market: {
+          id: 'market-2',
+          status: 'OPEN',
+          outcome: null,
+          qBall: 0,
+          qStrike: 0,
+          b: 100,
+        },
+        priceBall: 0.5,
+        priceStrike: 0.5,
+      });
+
+    render(
+      <TestWrapper>
+        <MarketProvider>
+          <MarketConsumer />
+        </MarketProvider>
+      </TestWrapper>
+    );
+
+    const ws = MockWebSocket.getLastInstance()!;
+
+    await act(async () => {
+      ws.simulateOpen();
+      await flushPromises();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('market-id')).toHaveTextContent('market-1');
+    });
+
+    // Simulate position count update
+    await act(async () => {
+      ws.simulateMessage({
+        type: 'POSITION_ADDED',
+        position: {
+          address: '0x123',
+          marketId: 'market-1',
+          outcome: 'BALL',
+          shares: 10,
+          costPaid: 5,
+          appSessionId: 'sess-1',
+          timestamp: Date.now(),
+        },
+        positionCount: 3,
+      });
+      await flushPromises();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('position-count')).toHaveTextContent('3');
+    });
+
+    // New market opens — should reset prices and positionCount
+    await act(async () => {
+      ws.simulateMessage({
+        type: 'MARKET_STATUS',
+        status: 'OPEN',
+        marketId: 'market-2',
+      });
+      await flushPromises();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('market-id')).toHaveTextContent('market-2');
+      expect(screen.getByTestId('price-ball')).toHaveTextContent('0.5');
+      expect(screen.getByTestId('price-strike')).toHaveTextContent('0.5');
+      expect(screen.getByTestId('position-count')).toHaveTextContent('0');
+    });
+  });
+
   it('handles STATE_SYNC message on connect', async () => {
     mockGetMarket.mockResolvedValueOnce({
       market: null,

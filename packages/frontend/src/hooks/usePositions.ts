@@ -59,7 +59,7 @@ export function usePositions(options: UsePositionsOptions = {}): UsePositionsRet
     refetch();
   }, [refetch]);
 
-  // Refetch on market resolution
+  // Handle real-time position and market updates
   useEffect(() => {
     return subscribe((message) => {
       if (
@@ -69,8 +69,16 @@ export function usePositions(options: UsePositionsOptions = {}): UsePositionsRet
       ) {
         refetch();
       }
+
+      if (
+        message.type === 'POSITION_ADDED' &&
+        message.position.address === address &&
+        (!marketId || message.position.marketId === marketId)
+      ) {
+        setPositions((prev) => [...prev, message.position]);
+      }
     });
-  }, [subscribe, marketId, refetch]);
+  }, [subscribe, marketId, address, refetch]);
 
   return {
     positions,

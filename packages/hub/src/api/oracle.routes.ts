@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { AppContext } from '../context.js';
 import type { GameStateRequest, OutcomeRequest } from './types.js';
 import type { Outcome } from '../modules/lmsr/types.js';
+import { getPrice } from '../modules/lmsr/engine.js';
 
 let marketCounter = 0;
 
@@ -40,6 +41,16 @@ export function registerOracleRoutes(app: FastifyInstance, ctx: AppContext): voi
     ctx.ws.broadcast({
       type: 'MARKET_STATUS',
       status: 'OPEN',
+      marketId: market.id,
+    });
+
+    // Broadcast fresh 50/50 odds for the new market
+    const priceBall = getPrice(market.qBall, market.qStrike, market.b, 'BALL');
+    const priceStrike = getPrice(market.qBall, market.qStrike, market.b, 'STRIKE');
+    ctx.ws.broadcast({
+      type: 'ODDS_UPDATE',
+      priceBall,
+      priceStrike,
       marketId: market.id,
     });
 

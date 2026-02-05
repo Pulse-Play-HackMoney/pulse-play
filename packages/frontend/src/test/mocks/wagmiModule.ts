@@ -35,6 +35,7 @@ let mockAccountState = {
 let mockConnectFn = jest.fn();
 let mockDisconnectFn = jest.fn();
 let mockConnectPending = false;
+let mockWalletClient: unknown = null;
 
 export function useAccount() {
   return mockAccountState;
@@ -57,6 +58,14 @@ export function useDisconnect() {
   };
 }
 
+export function useWalletClient() {
+  return {
+    data: mockWalletClient,
+    isLoading: false,
+    isError: false,
+  };
+}
+
 // Test utilities to configure mock state
 export function __setMockAccountState(state: Partial<typeof mockAccountState>) {
   mockAccountState = { ...mockAccountState, ...state };
@@ -74,6 +83,10 @@ export function __setMockConnectPending(pending: boolean) {
   mockConnectPending = pending;
 }
 
+export function __setMockWalletClient(client: unknown) {
+  mockWalletClient = client;
+}
+
 export function __resetMocks() {
   mockAccountState = {
     address: undefined,
@@ -85,4 +98,5 @@ export function __resetMocks() {
   mockConnectFn = jest.fn();
   mockDisconnectFn = jest.fn();
   mockConnectPending = false;
+  mockWalletClient = null;
 }

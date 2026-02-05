@@ -12,6 +12,8 @@ import type {
   OutcomeRequest,
   OutcomeResponse,
   AdminStateResponse,
+  MMInfoResponse,
+  MMFaucetResponse,
 } from './types';
 
 // API Error class
@@ -104,4 +106,20 @@ export async function resolveOutcome(
 export async function getAdminState(): Promise<AdminStateResponse> {
   const response = await fetch(`${HUB_REST_URL}/api/admin/state`);
   return handleResponse<AdminStateResponse>(response);
+}
+
+// ── Market Maker Endpoints ──
+
+export async function getMMInfo(): Promise<MMInfoResponse> {
+  const response = await fetch(`${HUB_REST_URL}/api/mm/info`);
+  return handleResponse<MMInfoResponse>(response);
+}
+
+export async function requestMMFaucet(count = 1): Promise<MMFaucetResponse> {
+  const response = await fetch(`${HUB_REST_URL}/api/faucet/mm`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ count }),
+  });
+  return handleResponse<MMFaucetResponse>(response);
 }

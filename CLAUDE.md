@@ -10,6 +10,8 @@ Focus on Test-Driven Development as the benchmark for whether something is consi
 
 Whenever there is an update to a dev environment configuration, a new command, or something relevant to the demoing/development flow of things, update the relevant README.md as necessary. Do not overdo it and allows be trying to pigeon hole something into the README.md. Just always operate under the assumption that a developer who has never seen this repository before should be able to browse the relevant README.md to understand how to set up the development environment, run tests, and overall use the repo.
 
+For any updates to the packages/hub, always ensure that there is sufficient and elegant logging.
+
 While teaching myself how to use the Yellow Network, I spun up a teaching repo at `../yellow-quickstart`. In this repo, there are a number of scripts outlining some basic flows, as well as some helper functions that wrap up certain functionality. Reference these whenever necessary to get an idea of how to interact with the @erc7824/nitrolite library.
 
 

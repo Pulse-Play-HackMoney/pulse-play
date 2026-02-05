@@ -14,5 +14,9 @@ export type WalletMode = 'metamask' | 'private-key';
 export const WALLET_MODE: WalletMode =
   (process.env.NEXT_PUBLIC_WALLET_MODE as WalletMode) || 'private-key';
 
+// Clearnode WebSocket URL
+export const CLEARNODE_URL =
+  process.env.NEXT_PUBLIC_CLEARNODE_URL || 'wss://clearnet-sandbox.yellow.com/ws';
+
 // Chain configuration
 export const CHAIN_ID = 11155111; // Sepolia

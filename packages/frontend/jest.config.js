@@ -16,7 +16,9 @@ const config = {
     '^wagmi/chains$': '<rootDir>/src/test/mocks/wagmiChains.ts',
     '^viem$': '<rootDir>/src/test/mocks/viemModule.ts',
     '^viem/accounts$': '<rootDir>/src/test/mocks/viemAccounts.ts',
+    '^viem/chains$': '<rootDir>/src/test/mocks/wagmiChains.ts',
     '^@tanstack/react-query$': '<rootDir>/src/test/mocks/reactQuery.ts',
+    '^@erc7824/nitrolite$': '<rootDir>/src/test/mocks/nitroliteModule.ts',
   },
   testPathIgnorePatterns: ['<rootDir>/.next/', '<rootDir>/node_modules/'],
   collectCoverageFrom: [

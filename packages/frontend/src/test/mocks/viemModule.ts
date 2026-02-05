@@ -6,11 +6,12 @@ export function createPublicClient() {
   };
 }
 
-export function createWalletClient() {
+export function createWalletClient(options?: { account?: unknown; chain?: unknown; transport?: unknown }) {
   return {
-    chain: { id: 11155111 },
-    transport: {},
-    account: undefined,
+    chain: options?.chain || { id: 11155111 },
+    transport: options?.transport || {},
+    account: options?.account || undefined,
+    signTypedData: jest.fn().mockResolvedValue('0x' + '0'.repeat(130)),
   };
 }
 

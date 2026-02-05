@@ -39,6 +39,15 @@ async function main() {
 
   await app.listen({ port: PORT, host: '0.0.0.0' });
   logger.startup(PORT);
+
+  // Connect to Clearnode (non-fatal — server stays up if it fails)
+  try {
+    await clearnodeClient.connect();
+    logger.clearnodeConnected(clearnodeClient.getAddress());
+  } catch (err) {
+    logger.error('clearnode-connect', err);
+    logger.clearnodeDisconnected();
+  }
 }
 
 main().catch((err) => {

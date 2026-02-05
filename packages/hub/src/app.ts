@@ -8,6 +8,7 @@ import { registerBetRoutes } from './api/bet.routes.js';
 import { registerOracleRoutes } from './api/oracle.routes.js';
 import { registerFaucetRoutes } from './api/faucet.routes.js';
 import { registerAdminRoutes } from './api/admin.routes.js';
+import { registerMMRoutes } from './api/mm.routes.js';
 import type { WsStateSync } from './api/types.js';
 
 export async function buildApp(ctx: AppContext) {
@@ -81,6 +82,7 @@ export async function buildApp(ctx: AppContext) {
   registerOracleRoutes(app, ctx);
   registerFaucetRoutes(app, ctx);
   registerAdminRoutes(app, ctx);
+  registerMMRoutes(app, ctx);
 
   return app;
 }

@@ -107,6 +107,20 @@ describe('Oracle Routes', () => {
       );
     });
 
+    test('broadcasts ODDS_UPDATE with 50/50 prices on market open', async () => {
+      const spy = jest.spyOn(ctx.ws, 'broadcast');
+      ctx.oracle.setGameActive(true);
+      await app.inject({ method: 'POST', url: '/api/oracle/market/open' });
+      expect(spy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'ODDS_UPDATE',
+          priceBall: 0.5,
+          priceStrike: 0.5,
+          marketId: 'market-1',
+        }),
+      );
+    });
+
     test('created market is accessible via GET /api/market', async () => {
       const marketId = await activateAndOpenMarket();
       const res = await app.inject({ method: 'GET', url: '/api/market' });

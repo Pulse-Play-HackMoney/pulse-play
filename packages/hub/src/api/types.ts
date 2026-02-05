@@ -28,6 +28,18 @@ export interface FaucetRequest {
   amount: number;
 }
 
+export interface MMFaucetRequest {
+  count?: number;
+}
+
+// ── MM Response DTOs ──
+
+export interface MMInfoResponse {
+  address: string;
+  balance: string;
+  isConnected: boolean;
+}
+
 // ── Response DTOs ──
 
 export interface BetResponse {

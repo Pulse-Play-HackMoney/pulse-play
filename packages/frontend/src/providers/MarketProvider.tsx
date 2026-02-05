@@ -94,17 +94,30 @@ export function MarketProvider({ children }: MarketProviderProps) {
           break;
 
         case 'MARKET_STATUS':
-          setState((prev) => ({
-            ...prev,
-            market: prev.market
+          setState((prev) => {
+            const isNewMarket = prev.market ? prev.market.id !== message.marketId : true;
+            const market = prev.market
               ? {
                   ...prev.market,
+                  id: message.marketId,
                   status: message.status as MarketStatus,
-                  outcome: message.outcome ?? prev.market.outcome,
+                  outcome: message.outcome ?? (isNewMarket ? null : prev.market.outcome),
+                  ...(isNewMarket ? { qBall: 0, qStrike: 0, b: 100 } : {}),
                 }
-              : null,
-          }));
-          // Refetch for full market data when status changes
+              : {
+                  id: message.marketId,
+                  status: message.status as MarketStatus,
+                  outcome: message.outcome ?? null,
+                  qBall: 0,
+                  qStrike: 0,
+                  b: 100,
+                };
+            return {
+              ...prev,
+              market,
+              ...(isNewMarket ? { priceBall: 0.5, priceStrike: 0.5, positionCount: 0 } : {}),
+            };
+          });
           if (message.status === 'OPEN' || message.status === 'RESOLVED') {
             refetch();
           }

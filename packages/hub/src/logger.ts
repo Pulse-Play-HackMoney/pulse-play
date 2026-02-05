@@ -146,13 +146,18 @@ export const logger = {
 
   // ── Faucet ─────────────────────────────────────────────────────────────
 
-  faucetMM(success: boolean, error?: string): void {
+  faucetMM(success: boolean, count: number = 1, error?: string): void {
     if (silent) return;
     if (success) {
-      write(`${INDENT}${DIM}└${RESET} ${GREEN}MM faucet funded${RESET}`);
+      write(`${INDENT}${DIM}└${RESET} ${GREEN}MM faucet funded${RESET} ${DIM}(${count}x)${RESET}`);
     } else {
-      write(`${INDENT}${DIM}└${RESET} ${RED}${BOLD}ERROR${RESET}: MM faucet failed — ${error ?? 'unknown'}`);
+      write(`${INDENT}${DIM}└${RESET} ${RED}${BOLD}ERROR${RESET}: MM faucet failed — ${error ?? 'unknown'} ${DIM}(${count}x requested)${RESET}`);
     }
+  },
+
+  mmInfoFetched(): void {
+    if (silent) return;
+    write(`${INDENT}${DIM}└${RESET} ${CYAN}MM info fetched${RESET}`);
   },
 
   faucetUser(address: string, amount: number): void {
@@ -167,6 +172,18 @@ export const logger = {
   adminReset(): void {
     if (silent) return;
     write(`${INDENT}${DIM}└${RESET} ${YELLOW}System reset to clean state${RESET}`);
+  },
+
+  // ── Clearnode ────────────────────────────────────────────────────────
+
+  clearnodeConnected(address: string): void {
+    if (silent) return;
+    write(`${ts()} ${BOLD}${GREEN}◆${RESET} Clearnode connected as ${MAGENTA}${addr(address)}${RESET}`);
+  },
+
+  clearnodeDisconnected(): void {
+    if (silent) return;
+    write(`${ts()} ${BOLD}${YELLOW}◆${RESET} Clearnode ${YELLOW}disconnected${RESET} — running in degraded mode`);
   },
 
   // ── WebSocket ──────────────────────────────────────────────────────────

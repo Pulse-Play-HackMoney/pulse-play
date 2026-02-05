@@ -147,3 +147,18 @@ export type WsMessage =
   | WsPositionAdded
   | WsConnectionCount
   | WsStateSync;
+
+// ── Market Maker DTOs ──
+
+export interface MMInfoResponse {
+  address: string;
+  balance: string;
+  isConnected: boolean;
+}
+
+export interface MMFaucetResponse {
+  success: boolean;
+  funded: number;
+  requested?: number;
+  error?: string;
+}

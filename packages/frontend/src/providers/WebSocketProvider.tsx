@@ -59,6 +59,11 @@ export function WebSocketProvider({
   useEffect(() => {
     if (!address) return;
 
+    // Guard against orphaned reconnects from StrictMode double-mount.
+    // When the cleanup function runs, it sets this flag *before* calling
+    // ws.close(), so the onclose handler knows not to schedule a reconnect.
+    let intentionalClose = false;
+
     const connect = () => {
       const wsUrl = `${url}?address=${address}`;
       const ws = new WebSocket(wsUrl);
@@ -70,8 +75,9 @@ export function WebSocketProvider({
 
       ws.onclose = () => {
         setIsConnected(false);
-        // Attempt reconnection after 3 seconds
-        reconnectTimeoutRef.current = setTimeout(connect, 3000);
+        if (!intentionalClose) {
+          reconnectTimeoutRef.current = setTimeout(connect, 3000);
+        }
       };
 
       ws.onerror = () => {
@@ -94,6 +100,7 @@ export function WebSocketProvider({
 
     // Cleanup on unmount or address change
     return () => {
+      intentionalClose = true;
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }

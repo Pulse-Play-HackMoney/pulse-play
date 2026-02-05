@@ -127,4 +127,30 @@ describe('WebSocketProvider', () => {
       expect.objectContaining({ type: 'GAME_STATE', active: true })
     );
   });
+
+  it('does not reconnect after intentional cleanup', () => {
+    jest.useFakeTimers();
+
+    const { unmount } = render(
+      <WebSocketProvider address="0x123">
+        <WebSocketConsumer />
+      </WebSocketProvider>
+    );
+
+    const ws = MockWebSocket.getLastInstance()!;
+    act(() => {
+      ws.simulateOpen();
+    });
+
+    const instancesBefore = MockWebSocket.instances.length;
+    unmount();
+
+    // Advance past reconnect delay — no new connection should be created
+    act(() => {
+      jest.advanceTimersByTime(5000);
+    });
+    expect(MockWebSocket.instances).toHaveLength(instancesBefore);
+
+    jest.useRealTimers();
+  });
 });

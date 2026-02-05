@@ -35,6 +35,15 @@ export function Header() {
             >
               Oracle
             </Link>
+            <Link
+              href="/market-maker"
+              className={`text-sm ${
+                pathname === '/market-maker' ? 'text-white' : 'text-gray-400 hover:text-white'
+              }`}
+              data-testid="nav-market-maker"
+            >
+              Market Maker
+            </Link>
           </nav>
         </div>
         <div className="flex items-center gap-4">

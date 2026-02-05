@@ -7,6 +7,8 @@ import {
   closeMarket,
   resolveOutcome,
   getAdminState,
+  getMMInfo,
+  requestMMFaucet,
   ApiError,
 } from './api';
 import type { BetRequest, MarketResponse, PositionsResponse } from './types';
@@ -213,6 +215,64 @@ describe('api', () => {
 
       expect(result.gameState.active).toBe(false);
       expect(result.connectionCount).toBe(2);
+    });
+  });
+
+  describe('getMMInfo', () => {
+    it('makes GET to /api/mm/info', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          address: '0xMM',
+          balance: '10000000',
+          isConnected: true,
+        }),
+      });
+
+      const result = await getMMInfo();
+
+      expect(mockFetch).toHaveBeenCalledWith('http://localhost:3001/api/mm/info');
+      expect(result.address).toBe('0xMM');
+      expect(result.balance).toBe('10000000');
+      expect(result.isConnected).toBe(true);
+    });
+  });
+
+  describe('requestMMFaucet', () => {
+    it('makes POST to /api/faucet/mm with count', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true, funded: 5 }),
+      });
+
+      const result = await requestMMFaucet(5);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:3001/api/faucet/mm',
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ count: 5 }),
+        })
+      );
+      expect(result.success).toBe(true);
+      expect(result.funded).toBe(5);
+    });
+
+    it('defaults count to 1', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true, funded: 1 }),
+      });
+
+      await requestMMFaucet();
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:3001/api/faucet/mm',
+        expect.objectContaining({
+          body: JSON.stringify({ count: 1 }),
+        })
+      );
     });
   });
 });

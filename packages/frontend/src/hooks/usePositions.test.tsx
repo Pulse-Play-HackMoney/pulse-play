@@ -167,4 +167,129 @@ describe('usePositions', () => {
       expect(mockGetPositions).toHaveBeenCalledTimes(2);
     });
   });
+
+  it('appends position on POSITION_ADDED for current user', async () => {
+    mockGetPositions.mockResolvedValueOnce({ positions: [] });
+
+    const { result } = renderHook(
+      () => usePositions({ address: '0xabc' }),
+      { wrapper: TestWrapper }
+    );
+
+    const ws = MockWebSocket.getLastInstance()!;
+
+    await act(async () => {
+      ws.simulateOpen();
+      await flushPromises();
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.positions).toHaveLength(0);
+
+    const newPosition = {
+      address: '0xabc',
+      marketId: 'market-1',
+      outcome: 'BALL' as const,
+      shares: 10,
+      costPaid: 5,
+      appSessionId: 'session-1',
+      timestamp: Date.now(),
+    };
+
+    await act(async () => {
+      ws.simulateMessage({
+        type: 'POSITION_ADDED',
+        position: newPosition,
+        positionCount: 1,
+      });
+      await flushPromises();
+    });
+
+    await waitFor(() => {
+      expect(result.current.positions).toHaveLength(1);
+    });
+
+    expect(result.current.positions[0]).toEqual(newPosition);
+  });
+
+  it('ignores POSITION_ADDED for a different user', async () => {
+    mockGetPositions.mockResolvedValueOnce({ positions: [] });
+
+    const { result } = renderHook(
+      () => usePositions({ address: '0xabc' }),
+      { wrapper: TestWrapper }
+    );
+
+    const ws = MockWebSocket.getLastInstance()!;
+
+    await act(async () => {
+      ws.simulateOpen();
+      await flushPromises();
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      ws.simulateMessage({
+        type: 'POSITION_ADDED',
+        position: {
+          address: '0xOTHER',
+          marketId: 'market-1',
+          outcome: 'BALL' as const,
+          shares: 10,
+          costPaid: 5,
+          appSessionId: 'session-1',
+          timestamp: Date.now(),
+        },
+        positionCount: 1,
+      });
+      await flushPromises();
+    });
+
+    expect(result.current.positions).toHaveLength(0);
+  });
+
+  it('ignores POSITION_ADDED for a different market when marketId filter is set', async () => {
+    mockGetPositions.mockResolvedValueOnce({ positions: [] });
+
+    const { result } = renderHook(
+      () => usePositions({ address: '0xabc', marketId: 'market-1' }),
+      { wrapper: TestWrapper }
+    );
+
+    const ws = MockWebSocket.getLastInstance()!;
+
+    await act(async () => {
+      ws.simulateOpen();
+      await flushPromises();
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      ws.simulateMessage({
+        type: 'POSITION_ADDED',
+        position: {
+          address: '0xabc',
+          marketId: 'market-2',
+          outcome: 'STRIKE' as const,
+          shares: 5,
+          costPaid: 2.5,
+          appSessionId: 'session-2',
+          timestamp: Date.now(),
+        },
+        positionCount: 1,
+      });
+      await flushPromises();
+    });
+
+    expect(result.current.positions).toHaveLength(0);
+  });
 });

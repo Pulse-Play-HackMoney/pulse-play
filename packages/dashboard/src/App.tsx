@@ -89,12 +89,12 @@ export function App({ wsUrl }: AppProps) {
         break;
 
       case 'MARKET_STATUS':
-        // Update market status
         setState((prev) => {
           if (!prev) return prev;
-          if (!prev.market) {
-            // New market created - we'll get full details via STATE_SYNC on next connect
-            // For now, just indicate market exists with status
+          const isNewMarket = !prev.market || prev.market.id !== msg.marketId;
+          if (isNewMarket) {
+            setPositions([]);
+            setPrices({ priceBall: 0.5, priceStrike: 0.5 });
             return {
               ...prev,
               market: {
@@ -105,28 +105,19 @@ export function App({ wsUrl }: AppProps) {
                 qStrike: 0,
                 b: 100,
               },
+              positionCount: 0,
             };
           }
           return {
             ...prev,
             market: {
-              ...prev.market,
+              ...prev.market!,
+              id: msg.marketId,
               status: msg.status,
-              outcome: msg.outcome ?? prev.market.outcome,
+              outcome: msg.outcome ?? prev.market!.outcome,
             },
           };
         });
-        // Clear positions on new market (OPEN status with new marketId)
-        if (msg.status === 'OPEN') {
-          setState((prev) => {
-            if (prev?.market?.id !== msg.marketId) {
-              // New market - clear positions
-              setPositions([]);
-              return prev ? { ...prev, positionCount: 0 } : prev;
-            }
-            return prev;
-          });
-        }
         break;
 
       case 'GAME_STATE':

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { AppContext } from '../context.js';
-import type { FaucetRequest } from './types.js';
+import type { FaucetRequest, MMFaucetRequest } from './types.js';
 
 export function registerFaucetRoutes(app: FastifyInstance, ctx: AppContext): void {
   app.post<{ Body: FaucetRequest }>('/api/faucet/user', async (req, reply) => {
@@ -18,14 +18,32 @@ export function registerFaucetRoutes(app: FastifyInstance, ctx: AppContext): voi
     return { success: true, address, amount };
   });
 
-  app.post('/api/faucet/mm', async (_req, reply) => {
+  app.post<{ Body: MMFaucetRequest }>('/api/faucet/mm', async (req, reply) => {
+    const body = req.body ?? {} as any;
+    const count = body.count ?? 1;
+
+    if (typeof count !== 'number' || !Number.isInteger(count) || count < 1) {
+      return reply.status(400).send({ error: 'count must be a positive integer' });
+    }
+    if (count > 50) {
+      return reply.status(400).send({ error: 'count must not exceed 50' });
+    }
+
+    let funded = 0;
     try {
-      await ctx.clearnodeClient.requestFaucet();
-      ctx.log.faucetMM(true);
-      return { success: true };
+      for (let i = 0; i < count; i++) {
+        await ctx.clearnodeClient.requestFaucet();
+        funded++;
+      }
+      ctx.log.faucetMM(true, funded);
+      return { success: true, funded };
     } catch (err: any) {
-      ctx.log.faucetMM(false, err.message);
-      return reply.status(500).send({ error: err.message ?? 'Faucet request failed' });
+      const errorMsg = err.message ?? 'Faucet request failed';
+      ctx.log.faucetMM(false, count, errorMsg);
+      if (funded > 0) {
+        return { success: true, funded, requested: count, error: errorMsg };
+      }
+      return reply.status(500).send({ error: errorMsg });
     }
   });
 }
