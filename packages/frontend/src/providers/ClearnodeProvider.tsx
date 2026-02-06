@@ -42,10 +42,10 @@ const ClearnodeContext = createContext<ClearnodeContextValue>({
   ws: null,
   balance: null,
   allowanceAmount: 1000,
-  setAllowanceAmount: () => {},
-  refreshBalance: async () => {},
-  reconnect: async () => {},
-  disconnect: () => {},
+  setAllowanceAmount: () => { },
+  refreshBalance: async () => { },
+  reconnect: async () => { },
+  disconnect: () => { },
   createAppSession: notConnectedError,
   closeAppSession: notConnectedError,
   submitAppState: notConnectedError,
@@ -140,7 +140,8 @@ export function ClearnodeProvider({ children, url = CLEARNODE_URL }: ClearnodePr
       const result = await authenticateBrowser(newWs, walletClient, {
         allowances: [{ asset: 'ytest.usd', amount: String(allowanceAmountRef.current * 1_000_000) }],
       });
-      setSigner(result.signer);
+      // setSigner(result.signer);
+      setSigner(() => result.signer);
       setExpiresAt(result.expiresAt);
       setStatus('connected');
 

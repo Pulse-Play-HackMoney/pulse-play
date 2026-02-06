@@ -15,6 +15,37 @@ jest.mock('@/providers/WagmiProvider', () => ({
 
 jest.mock('@/lib/api');
 
+jest.mock('@/hooks/useClearnode', () => ({
+  useClearnode: jest.fn().mockReturnValue({
+    status: 'connected',
+    createAppSession: jest.fn().mockResolvedValue({
+      appSessionId: '0xSESSION',
+      version: 1,
+      status: 'open',
+    }),
+    error: null,
+    isSessionValid: true,
+    expiresAt: Date.now() + 3600000,
+    signer: null,
+    ws: null,
+    balance: '1000000',
+    allowanceAmount: 1000,
+    setAllowanceAmount: jest.fn(),
+    refreshBalance: jest.fn(),
+    reconnect: jest.fn(),
+    disconnect: jest.fn(),
+    closeAppSession: jest.fn(),
+    submitAppState: jest.fn(),
+    transfer: jest.fn(),
+    getAppSessions: jest.fn(),
+    getConfig: jest.fn(),
+  }),
+}));
+
+jest.mock('@/lib/config', () => ({
+  MM_ADDRESS: '0xMM' as `0x${string}`,
+}));
+
 const mockUseMarket = MarketProvider.useMarket as jest.Mock;
 const mockUseWallet = WagmiProvider.useWallet as jest.Mock;
 const mockPlaceBet = api.placeBet as jest.MockedFunction<typeof api.placeBet>;
@@ -95,6 +126,8 @@ describe('BetForm', () => {
         expect.objectContaining({
           outcome: 'BALL',
           amount: 10,
+          appSessionId: '0xSESSION',
+          appSessionVersion: 1,
         })
       );
     });
@@ -102,5 +135,10 @@ describe('BetForm', () => {
     await waitFor(() => {
       expect(onBetPlaced).toHaveBeenCalledWith('BALL', 9.5);
     });
+  });
+
+  it('shows "Place Bet" when not loading', () => {
+    render(<BetForm />);
+    expect(screen.getByTestId('place-bet-button')).toHaveTextContent('Place Bet');
   });
 });

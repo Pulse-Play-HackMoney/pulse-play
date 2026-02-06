@@ -31,6 +31,7 @@ describe('api', () => {
         outcome: 'BALL',
         amount: 10,
         appSessionId: 'session-1',
+        appSessionVersion: 1,
       };
 
       mockFetch.mockResolvedValueOnce({
@@ -72,6 +73,7 @@ describe('api', () => {
           outcome: 'BALL',
           amount: 10,
           appSessionId: 'session-1',
+          appSessionVersion: 1,
         })
       ).rejects.toThrow(ApiError);
     });
@@ -116,6 +118,7 @@ describe('api', () => {
             shares: 10,
             costPaid: 5,
             appSessionId: 'session-1',
+            appSessionVersion: 1,
             timestamp: Date.now(),
           },
         ],

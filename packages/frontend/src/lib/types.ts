@@ -3,6 +3,7 @@ export type Outcome = 'BALL' | 'STRIKE';
 
 // Market status (matches hub)
 export type MarketStatus = 'PENDING' | 'OPEN' | 'CLOSED' | 'RESOLVED';
+export type SessionStatus = 'open' | 'settling' | 'settled';
 
 // ── Request DTOs ──
 
@@ -12,6 +13,7 @@ export interface BetRequest {
   outcome: Outcome;
   amount: number;
   appSessionId: string;
+  appSessionVersion: number;
 }
 
 export interface GameStateRequest {
@@ -58,6 +60,8 @@ export interface Position {
   shares: number;
   costPaid: number;
   appSessionId: string;
+  appSessionVersion: number;
+  sessionStatus?: SessionStatus;
   timestamp: number;
 }
 
@@ -91,6 +95,7 @@ export interface AdminStateResponse {
   gameState: { active: boolean };
   positionCount: number;
   connectionCount: number;
+  sessionCounts?: { open: number; settled: number };
 }
 
 // ── WebSocket message types ──
@@ -141,6 +146,13 @@ export interface WsStateSync {
   positions: Position[];
 }
 
+export interface WsSessionSettled {
+  type: 'SESSION_SETTLED';
+  appSessionId: string;
+  status: 'settled';
+  address: string;
+}
+
 export type WsMessage =
   | WsOddsUpdate
   | WsMarketStatus
@@ -148,7 +160,8 @@ export type WsMessage =
   | WsBetResult
   | WsPositionAdded
   | WsConnectionCount
-  | WsStateSync;
+  | WsStateSync
+  | WsSessionSettled;
 
 // ── Market Maker DTOs ──
 

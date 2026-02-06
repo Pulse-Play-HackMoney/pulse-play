@@ -18,5 +18,10 @@ export const WALLET_MODE: WalletMode =
 export const CLEARNODE_URL =
   process.env.NEXT_PUBLIC_CLEARNODE_URL || 'wss://clearnet-sandbox.yellow.com/ws';
 
+// Market Maker address (counterparty for app sessions)
+export const MM_ADDRESS = process.env.NEXT_PUBLIC_MM_ADDRESS as
+  | `0x${string}`
+  | undefined;
+
 // Chain configuration
 export const CHAIN_ID = 11155111; // Sepolia

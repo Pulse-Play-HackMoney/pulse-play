@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useMarket } from '@/providers/MarketProvider';
 import { useWallet } from '@/providers/WagmiProvider';
 import { useBet } from '@/hooks/useBet';
+import { MM_ADDRESS } from '@/lib/config';
 import type { Outcome } from '@/lib/types';
 
 interface BetFormProps {
@@ -19,10 +20,9 @@ export function BetForm({ className = '', onBetPlaced }: BetFormProps) {
   const [amount, setAmount] = useState<string>('');
   const [selectedOutcome, setSelectedOutcome] = useState<Outcome | null>(null);
 
-  const { bet, isLoading, error } = useBet({
+  const { bet, isLoading, step, error } = useBet({
     address,
     marketId: market?.id,
-    appSessionId: `session-${Date.now()}`, // Simplified for demo
     onSuccess: (response) => {
       if (response.accepted && selectedOutcome && response.shares) {
         onBetPlaced?.(selectedOutcome, response.shares);
@@ -40,6 +40,13 @@ export function BetForm({ className = '', onBetPlaced }: BetFormProps) {
     await bet(selectedOutcome, Number(amount));
   };
 
+  const getButtonText = () => {
+    if (!isLoading) return 'Place Bet';
+    if (step === 'creating-session') return 'Creating Session...';
+    if (step === 'notifying-hub') return 'Placing Bet...';
+    return 'Processing...';
+  };
+
   return (
     <div className={`bg-gray-800 rounded-lg p-6 ${className}`} data-testid="bet-form">
       <h2 className="text-lg font-semibold text-white mb-4">Place Bet</h2>
@@ -50,6 +57,15 @@ export function BetForm({ className = '', onBetPlaced }: BetFormProps) {
           data-testid="market-closed-warning"
         >
           Market is not open for betting
+        </div>
+      )}
+
+      {!MM_ADDRESS && (
+        <div
+          className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-4 text-sm text-red-400"
+          data-testid="mm-address-warning"
+        >
+          Market Maker address not configured
         </div>
       )}
 
@@ -124,7 +140,7 @@ export function BetForm({ className = '', onBetPlaced }: BetFormProps) {
         className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium py-3 rounded-lg transition-colors"
         data-testid="place-bet-button"
       >
-        {isLoading ? 'Placing Bet...' : 'Place Bet'}
+        {getButtonText()}
       </button>
     </div>
   );
