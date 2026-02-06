@@ -96,6 +96,15 @@ export function SystemInfo({
         <Text>Positions:</Text>
         <Text>{state?.positionCount ?? 0}</Text>
       </Box>
+
+      {/* Session counts */}
+      <Box gap={1}>
+        <Text>Sessions:</Text>
+        <Text color="green">{state?.sessionCounts?.open ?? 0}</Text>
+        <Text color="gray">/</Text>
+        <Text color="blue">{state?.sessionCounts?.settled ?? 0}</Text>
+        <Text color="gray" dimColor>(open/settled)</Text>
+      </Box>
     </Box>
   );
 }

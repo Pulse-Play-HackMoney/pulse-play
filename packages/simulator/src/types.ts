@@ -1,0 +1,202 @@
+// ── Shared types for the simulator ──
+
+import type { Address, Hex } from 'viem';
+
+// ── Outcome / Market / Session ──
+
+export type Outcome = 'BALL' | 'STRIKE';
+export type MarketStatus = 'PENDING' | 'OPEN' | 'CLOSED' | 'RESOLVED';
+export type SessionStatus = 'open' | 'settling' | 'settled';
+
+// ── WebSocket message types (mirrors hub) ──
+
+export interface WsOddsUpdate {
+  type: 'ODDS_UPDATE';
+  priceBall: number;
+  priceStrike: number;
+  qBall: number;
+  qStrike: number;
+  marketId: string;
+}
+
+export interface WsMarketStatus {
+  type: 'MARKET_STATUS';
+  status: MarketStatus;
+  marketId: string;
+  outcome?: Outcome;
+}
+
+export interface WsGameState {
+  type: 'GAME_STATE';
+  active: boolean;
+}
+
+export interface WsBetResult {
+  type: 'BET_RESULT';
+  result: 'WIN' | 'LOSS';
+  marketId: string;
+  payout?: number;
+  loss?: number;
+}
+
+export interface WsPositionAdded {
+  type: 'POSITION_ADDED';
+  position: Position;
+  positionCount: number;
+}
+
+export interface WsConnectionCount {
+  type: 'CONNECTION_COUNT';
+  count: number;
+}
+
+export interface WsStateSync {
+  type: 'STATE_SYNC';
+  state: AdminStateResponse;
+  positions: Position[];
+}
+
+export interface WsSessionSettled {
+  type: 'SESSION_SETTLED';
+  appSessionId: string;
+  status: 'settled';
+  address: string;
+}
+
+export type WsMessage =
+  | WsOddsUpdate
+  | WsMarketStatus
+  | WsGameState
+  | WsBetResult
+  | WsPositionAdded
+  | WsConnectionCount
+  | WsStateSync
+  | WsSessionSettled;
+
+// ── Admin state response ──
+
+export interface AdminStateResponse {
+  market: {
+    id: string;
+    status: MarketStatus;
+    outcome: Outcome | null;
+    qBall: number;
+    qStrike: number;
+    b: number;
+  } | null;
+  gameState: { active: boolean };
+  positionCount: number;
+  connectionCount: number;
+  sessionCounts?: { open: number; settled: number };
+}
+
+// ── Position ──
+
+export interface Position {
+  marketId: string;
+  address: string;
+  outcome: Outcome;
+  shares: number;
+  costPaid: number;
+  appSessionId: string;
+  appSessionVersion: number;
+  sessionStatus?: SessionStatus;
+  timestamp: number;
+}
+
+// ── Hub API types ──
+
+export interface BetRequest {
+  address: string;
+  marketId: string;
+  outcome: Outcome;
+  amount: number;
+  appSessionId: string;
+  appSessionVersion: number;
+}
+
+export interface BetResponse {
+  accepted: boolean;
+  reason?: string;
+  shares?: number;
+  newPriceBall?: number;
+  newPriceStrike?: number;
+}
+
+export interface MMInfoResponse {
+  address: string;
+  balance: string;
+  isConnected: boolean;
+}
+
+// ── Event log entry ──
+
+export interface EventLogEntry {
+  timestamp: Date;
+  type: string;
+  message: string;
+  raw?: WsMessage | SimEvent;
+}
+
+// ── Simulator-specific types ──
+
+export type ClearnodeConnectionStatus = 'idle' | 'connecting' | 'connected' | 'error';
+
+export interface SimWalletRow {
+  index: number;
+  address: Address;
+  privateKey: Hex;
+  balance: string;
+  funded: boolean;
+  side: Outcome | null;
+  maxBets: number;
+  betAmount: number;
+  delayMs: number;
+  betCount: number;
+  clearnodeStatus: ClearnodeConnectionStatus;
+}
+
+export interface SimConfig {
+  ballBias: number;
+  betAmountMin: number;
+  betAmountMax: number;
+  delayMinMs: number;
+  delayMaxMs: number;
+  maxBetsPerWallet: number;
+}
+
+export const DEFAULT_SIM_CONFIG: SimConfig = {
+  ballBias: 0.5,
+  betAmountMin: 1.0,
+  betAmountMax: 5.0,
+  delayMinMs: 1500,
+  delayMaxMs: 4000,
+  maxBetsPerWallet: 3,
+};
+
+export type SimStatus = 'idle' | 'running' | 'stopping';
+
+export interface SimEvent {
+  type: 'bet-placed' | 'bet-failed' | 'bet-rejected' | 'session-error' | 'sim-started' | 'sim-stopped' | 'wallet-funded' | 'fund-error';
+  walletIndex: number;
+  message: string;
+  timestamp: Date;
+}
+
+export interface SimResults {
+  marketId: string;
+  outcome: Outcome;
+  winners: Array<{
+    walletIndex: number;
+    address: string;
+    payout: number;
+    profit: number;
+  }>;
+  losers: Array<{
+    walletIndex: number;
+    address: string;
+    loss: number;
+  }>;
+  totalPayout: number;
+  totalLoss: number;
+}

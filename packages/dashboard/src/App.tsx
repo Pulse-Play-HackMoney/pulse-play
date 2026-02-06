@@ -77,7 +77,7 @@ export function App({ wsUrl, hubUrl }: AppProps) {
   // MarketPanel: ~11 rows (border + title + status + 2 price bars + q values)
   // SystemInfo: ~9 rows (border + title + 5 info lines)
   // Scrollable panel overhead: ~3 rows (border top + title + border bottom)
-  const positionsVisibleCount = Math.max(rows - 19, 1);
+  const positionsVisibleCount = Math.max(rows - 21, 1);
   const eventLogVisibleCount = Math.max(rows - 17, 1);
   const barWidth = Math.max(Math.floor(columns / 2) - 6, 10);
 
@@ -223,9 +223,15 @@ export function App({ wsUrl, hubUrl }: AppProps) {
 
       case 'POSITION_ADDED':
         setPositions((prev) => [...prev, msg.position]);
-        setState((prev) =>
-          prev ? { ...prev, positionCount: msg.positionCount } : prev
-        );
+        setState((prev) => {
+          if (!prev) return prev;
+          const open = (prev.sessionCounts?.open ?? 0) + 1;
+          return {
+            ...prev,
+            positionCount: msg.positionCount,
+            sessionCounts: { open, settled: prev.sessionCounts?.settled ?? 0 },
+          };
+        });
         break;
 
       case 'CONNECTION_COUNT':
@@ -291,6 +297,25 @@ export function App({ wsUrl, hubUrl }: AppProps) {
             };
           });
         }
+        break;
+
+      case 'SESSION_SETTLED':
+        setPositions((prev) =>
+          prev.map((p) =>
+            p.appSessionId === msg.appSessionId
+              ? { ...p, sessionStatus: msg.status }
+              : p
+          )
+        );
+        setState((prev) => {
+          if (!prev) return prev;
+          const open = (prev.sessionCounts?.open ?? 0) - 1;
+          const settled = (prev.sessionCounts?.settled ?? 0) + 1;
+          return {
+            ...prev,
+            sessionCounts: { open: Math.max(0, open), settled },
+          };
+        });
         break;
 
       case 'BET_RESULT':

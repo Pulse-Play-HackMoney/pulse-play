@@ -6,6 +6,10 @@ import {
   formatWsMessage,
   getStatusColor,
   getOutcomeColor,
+  getSessionStatusColor,
+  formatStatusBadge,
+  formatOutcomeShort,
+  formatVersion,
   formatDollars,
   formatShares,
   renderPriceBar,
@@ -147,11 +151,23 @@ describe('formatWsMessage', () => {
         shares: 10.5,
         costPaid: 5.25,
         appSessionId: 'sess-1',
+        appSessionVersion: 1,
+        sessionStatus: 'open',
         timestamp: 1234567890,
       },
       positionCount: 3,
     };
     expect(formatWsMessage(msg)).toBe('0x1234..5678 BALL 10.50 $5.25');
+  });
+
+  it('formats SESSION_SETTLED messages', () => {
+    const msg: WsMessage = {
+      type: 'SESSION_SETTLED',
+      appSessionId: '0xABCDEF1234567890ABCDEF1234567890ABCDEF12',
+      status: 'settled',
+      address: '0x1234567890abcdef1234567890abcdef12345678',
+    };
+    expect(formatWsMessage(msg)).toBe('0x1234..5678 session 0xABCD..EF12 settled');
   });
 
   it('formats CONNECTION_COUNT messages', () => {
@@ -179,6 +195,8 @@ describe('formatWsMessage', () => {
           shares: 1,
           costPaid: 1,
           appSessionId: 's1',
+          appSessionVersion: 1,
+          sessionStatus: 'open',
           timestamp: 1,
         },
         {
@@ -188,11 +206,31 @@ describe('formatWsMessage', () => {
           shares: 2,
           costPaid: 2,
           appSessionId: 's2',
+          appSessionVersion: 1,
+          sessionStatus: 'settled',
           timestamp: 2,
         },
       ],
     };
     expect(formatWsMessage(msg)).toBe('Synced (2 positions)');
+  });
+});
+
+describe('getSessionStatusColor', () => {
+  it('returns green for open', () => {
+    expect(getSessionStatusColor('open')).toBe('green');
+  });
+
+  it('returns yellow for settling', () => {
+    expect(getSessionStatusColor('settling')).toBe('yellow');
+  });
+
+  it('returns blue for settled', () => {
+    expect(getSessionStatusColor('settled')).toBe('blue');
+  });
+
+  it('returns white for unknown status', () => {
+    expect(getSessionStatusColor('unknown' as any)).toBe('white');
   });
 });
 
@@ -228,6 +266,48 @@ describe('formatShares', () => {
     expect(formatShares(10)).toBe('10.00');
     expect(formatShares(12.345)).toBe('12.35');
     expect(formatShares(0.5)).toBe('0.50');
+  });
+});
+
+describe('formatStatusBadge', () => {
+  it('returns filled circle and OPEN for open status', () => {
+    expect(formatStatusBadge('open')).toBe('● OPEN');
+  });
+
+  it('returns open circle and SETTLING for settling status', () => {
+    expect(formatStatusBadge('settling')).toBe('◌ SETTLING');
+  });
+
+  it('returns target circle and SETTLED for settled status', () => {
+    expect(formatStatusBadge('settled')).toBe('◉ SETTLED');
+  });
+
+  it('returns empty circle and UNKNOWN for unrecognized status', () => {
+    expect(formatStatusBadge('invalid' as any)).toBe('○ UNKNOWN');
+  });
+});
+
+describe('formatOutcomeShort', () => {
+  it('returns BALL for BALL outcome', () => {
+    expect(formatOutcomeShort('BALL')).toBe('BALL');
+  });
+
+  it('returns STRK for STRIKE outcome', () => {
+    expect(formatOutcomeShort('STRIKE')).toBe('STRK');
+  });
+});
+
+describe('formatVersion', () => {
+  it('formats version 1 as v1', () => {
+    expect(formatVersion(1)).toBe('v1');
+  });
+
+  it('formats version 12 as v12', () => {
+    expect(formatVersion(12)).toBe('v12');
+  });
+
+  it('formats version 0 as v0', () => {
+    expect(formatVersion(0)).toBe('v0');
   });
 });
 

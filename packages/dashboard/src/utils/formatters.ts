@@ -1,4 +1,4 @@
-import type { WsMessage, Outcome, MarketStatus } from '../types.js';
+import type { WsMessage, Outcome, MarketStatus, SessionStatus } from '../types.js';
 
 /**
  * Formats a probability (0-1) as a percentage string
@@ -67,8 +67,42 @@ export function formatWsMessage(msg: WsMessage): string {
       return `${msg.count} clients`;
     case 'STATE_SYNC':
       return `Synced (${msg.positions.length} positions)`;
+    case 'SESSION_SETTLED':
+      return `${truncateAddress(msg.address)} session ${truncateAddress(msg.appSessionId)} settled`;
     default:
       return JSON.stringify(msg);
+  }
+}
+
+/**
+ * Returns a color for session status
+ */
+export function getSessionStatusColor(status: SessionStatus): string {
+  switch (status) {
+    case 'open':
+      return 'green';
+    case 'settling':
+      return 'yellow';
+    case 'settled':
+      return 'blue';
+    default:
+      return 'white';
+  }
+}
+
+/**
+ * Formats session status as a Unicode badge
+ */
+export function formatStatusBadge(status: SessionStatus): string {
+  switch (status) {
+    case 'open':
+      return '● OPEN';
+    case 'settling':
+      return '◌ SETTLING';
+    case 'settled':
+      return '◉ SETTLED';
+    default:
+      return '○ UNKNOWN';
   }
 }
 
@@ -98,6 +132,13 @@ export function getOutcomeColor(outcome: Outcome): string {
 }
 
 /**
+ * Formats outcome as a 4-char abbreviation
+ */
+export function formatOutcomeShort(outcome: Outcome): string {
+  return outcome === 'BALL' ? 'BALL' : 'STRK';
+}
+
+/**
  * Formats dollars with 2 decimal places
  */
 export function formatDollars(amount: number): string {
@@ -109,6 +150,13 @@ export function formatDollars(amount: number): string {
  */
 export function formatShares(shares: number): string {
   return shares.toFixed(2);
+}
+
+/**
+ * Formats state channel version compactly
+ */
+export function formatVersion(version: number): string {
+  return `v${version}`;
 }
 
 /**

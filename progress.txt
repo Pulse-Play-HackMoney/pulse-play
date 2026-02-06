@@ -936,3 +936,240 @@ Replaced the upfront `connect()` at startup with an internal `ensureConnected()`
 - Connection self-heals on next RPC call after drop
 - `GET /api/mm/info` calls `getBalance()` which now auto-connects, so the endpoint should almost always return `isConnected: true`
 - No keepalive, no ping/pong, no reconnect timers needed
+
+---
+
+## Wire App Sessions into Betting Flow — Complete
+Date: 2026-02-05
+
+### Summary
+Wired real Clearnode app sessions into three betting paths: bet placement (frontend), bet rejection (hub), and market resolution (hub). Previously, the frontend used a fake `appSessionId: session-${Date.now()}` and the hub never interacted with Clearnode during the bet lifecycle. Now:
+
+1. **Frontend creates real app sessions** before notifying the hub via `useBet` hook
+2. **Hub closes app sessions** when rejecting bets (returns user funds)
+3. **Hub settles positions via Clearnode** at resolution (reallocates losers, pays winners)
+
+### Steps Completed
+1. **Unit conversion utility** — `toMicroUnits`/`fromMicroUnits` in both hub and frontend (Clearnode uses microunits: 1 USDC = 1,000,000)
+2. **`appSessionVersion` field** — Added to Position, BetRequest, and all WS message types across hub, frontend, and dashboard
+3. **`MM_ADDRESS` config** — Frontend reads from `NEXT_PUBLIC_MM_ADDRESS` env var
+4. **`useBet` hook rewrite** — Creates real Clearnode app session → notifies hub with real session ID/version. Step tracking: `idle → creating-session → notifying-hub`
+5. **Hub bet rejection** — Closes app session on market-state rejection to return user funds
+6. **Hub resolution settlement** — Losers: `submitAppState` (reallocate to MM) + `closeSession`. Winners: `closeSession` (return costPaid) + `transfer` (profit). Losers processed first (MM needs funds).
+
+### Files Created
+- `packages/hub/src/utils/units.ts` — toMicroUnits, fromMicroUnits, MICRO, ASSET constants
+- `packages/hub/src/utils/units.test.ts` — 8 tests
+- `packages/frontend/src/lib/units.ts` — Same utility for frontend
+
+### Files Modified
+- `packages/hub/src/modules/position/types.ts` — Added `appSessionVersion: number`
+- `packages/hub/src/api/types.ts` — Added `appSessionVersion` to BetRequest, WsPositionAdded, WsStateSync, PositionsResponse
+- `packages/hub/src/api/bet.routes.ts` — Records appSessionVersion, closes session on rejection
+- `packages/hub/src/api/oracle.routes.ts` — Full Clearnode settlement loop at resolution
+- `packages/hub/src/api/positions.routes.ts` — Includes appSessionVersion in response
+- `packages/hub/src/api/mm.routes.ts` — Fixed to check `isConnected()` and include in response
+- `packages/hub/src/logger.ts` — 4 new log methods
+- `packages/frontend/src/hooks/useBet.ts` — Rewritten for real app sessions
+- `packages/frontend/src/components/bettor/BetForm.tsx` — Removed fake session ID, step-based loading
+- `packages/frontend/src/lib/config.ts` — Added MM_ADDRESS
+- `packages/frontend/src/lib/types.ts` — Added appSessionVersion
+- `packages/dashboard/src/types.ts` — Added appSessionVersion
+- All relevant test files updated across hub, frontend, dashboard
+
+### Key Technical Details
+- `AppSessionAllocation` uses `participant` field (NOT `destination`). `TransferParams` uses `destination`.
+- `appSessionId` must be cast to `0x${string}` (Hex type) for Clearnode API calls
+- Resolution processes losers before winners (MM needs loser funds to pay winner profit)
+- Each position settlement wrapped in individual try/catch (continues on failure)
+- `profit = payout (shares) - costPaid` — transfer only when profit > 0
+- `jest.resetModules()` breaks React hooks (dual React instance) — used `globalThis` getter pattern for mutable config in tests
+
+### Test Results
+- **Hub:** 18 suites, 230 passed (6 skipped — pre-existing)
+- **Frontend:** 24 suites, 185 passed
+- **Dashboard:** 1 suite, 33 passed
+- **Hub build:** ✅ clean
+- **Frontend build:** ✅ clean
+
+---
+
+## Dashboard App Session Visibility
+Date: 2026-02-05
+
+### What was done:
+Added session lifecycle tracking and visibility to the developer dashboard, giving developers a window into Yellow Network activity (Clearnode app sessions) alongside betting positions.
+
+### Hub Changes:
+1. **Position type** — Added `SessionStatus = 'open' | 'settling' | 'settled'` and `sessionStatus: SessionStatus` field to Position
+2. **PositionTracker** — Added `updateSessionStatus(appSessionId, status)` method
+3. **API types** — Added `WsSessionSettled` message type, `sessionCounts` to `AdminStateResponse`, `sessionStatus` to position shapes
+4. **bet.routes.ts** — Sets `sessionStatus: 'open'` when recording positions
+5. **oracle.routes.ts** — Calls `updateSessionStatus('settled')` + broadcasts `SESSION_SETTLED` after each loser/winner settlement (inside try/catch, only on success)
+6. **admin.routes.ts** — Computes `sessionCounts: { open, settled }` from positions for admin state response
+7. **app.ts** — STATE_SYNC includes `sessionCounts` for initial client sync
+
+### Dashboard Changes:
+1. **formatters.ts** — Added `getSessionStatusColor()` (open→green, settling→yellow, settled→blue), `SESSION_SETTLED` case in `formatWsMessage()`
+2. **App.tsx** — Added `SESSION_SETTLED` handler (updates position status + decrements open/increments settled counts), `POSITION_ADDED` increments open count, adjusted `positionsVisibleCount` for 2-line layout
+3. **PositionsPanel.tsx** — Two-line layout per position: Line 1 = bet info (address, outcome, shares, cost), Line 2 = session info (appSessionId, version, status with color)
+4. **SystemInfo.tsx** — Added sessions row showing `open/settled` counts with green/blue color coding
+
+### Frontend Changes:
+- Mirrored type updates: `SessionStatus`, `sessionStatus` on Position, `WsSessionSettled`, `sessionCounts` on `AdminStateResponse`
+
+### Files Modified:
+- `hub/src/modules/position/types.ts` — SessionStatus + sessionStatus field
+- `hub/src/modules/position/tracker.ts` — updateSessionStatus()
+- `hub/src/modules/position/tracker.test.ts` — 3 new tests
+- `hub/src/api/types.ts` — WsSessionSettled, sessionCounts, sessionStatus in shapes
+- `hub/src/api/bet.routes.ts` — sessionStatus: 'open'
+- `hub/src/api/oracle.routes.ts` — SESSION_SETTLED broadcast + updateSessionStatus
+- `hub/src/api/admin.routes.ts` — sessionCounts computation
+- `hub/src/api/positions.routes.ts` — sessionStatus in response mapping
+- `hub/src/app.ts` — sessionCounts in STATE_SYNC
+- `dashboard/src/types.ts` — Mirrored hub types
+- `dashboard/src/utils/formatters.ts` — getSessionStatusColor, SESSION_SETTLED formatting
+- `dashboard/src/utils/formatters.test.ts` — 6 new tests (4 sessionStatusColor + 1 SESSION_SETTLED + updated fixtures)
+- `dashboard/src/App.tsx` — SESSION_SETTLED handler, layout calc, session count tracking
+- `dashboard/src/components/PositionsPanel.tsx` — Two-line layout with session info
+- `dashboard/src/components/SystemInfo.tsx` — Sessions row
+- `frontend/src/lib/types.ts` — Type parity
+- All hub test files updated with `sessionStatus: 'open'` in Position objects
+
+### Test Results
+- **Hub:** 18 suites, 233 passed (6 skipped — pre-existing)
+- **Frontend:** 24 suites, 185 passed
+- **Dashboard:** 1 suite, 38 passed
+- **Hub build:** ✅ clean
+- **Dashboard build:** ✅ clean
+- **Frontend build:** ✅ clean
+
+---
+
+## Simulator Package Implementation
+Date: 2026-02-05
+
+### What was done:
+Implemented `packages/simulator/` — a standalone Ink (React for terminal) app that generates wallets, funds them, controls the oracle, runs automated betting simulations, and displays everything in a fullscreen terminal UI for demo purposes.
+
+### Package Structure:
+```
+packages/simulator/
+├── package.json, tsconfig.json, jest.config.js
+├── README.md, AGENTS.md
+├── src/
+│   ├── index.tsx                    — Entry point (CLI args, alt-screen, signals)
+│   ├── App.tsx                      — Main Ink app (state, commands, layout)
+│   ├── types.ts                     — Shared types (mirrors hub WsMessage + sim types)
+│   ├── core/
+│   │   ├── wallet-manager.ts        — Wallet generation + tracking (21 tests)
+│   │   ├── hub-client.ts            — Hub REST client (15 tests)
+│   │   ├── clearnode-pool.ts        — Per-wallet lazy Clearnode WS (14 tests)
+│   │   ├── clearnode/auth.ts        — 3-step EIP-712 auth (adapted from hub)
+│   │   ├── clearnode/rpc.ts         — sendAndWait helper (copied from hub)
+│   │   └── simulation-engine.ts     — Bet orchestration (16 tests)
+│   ├── hooks/
+│   │   ├── useWebSocket.ts          — Adapted from dashboard
+│   │   └── useTerminalSize.ts       — Copied from dashboard
+│   ├── components/
+│   │   ├── Header.tsx, WalletTable.tsx, MarketPanel.tsx, PriceBar.tsx
+│   │   ├── EventLog.tsx, CommandBar.tsx, ResultsPanel.tsx, HelpOverlay.tsx
+│   │   └── index.ts
+│   ├── utils/
+│   │   ├── formatters.ts            — Formatting helpers (36 tests)
+│   │   └── units.ts                 — toMicroUnits/fromMicroUnits
+│   └── test/mocks/
+│       └── nitroliteModule.ts       — Jest mock for @erc7824/nitrolite
+```
+
+### Core Modules:
+1. **WalletManager** — Generates private keys via viem, 1-based indexing, balance/funded tracking, profile assignment with ballBias
+2. **HubClient** — REST wrapper for all hub endpoints: bet, faucet (user/mm), oracle (game-state/open/close/resolve), admin (state/positions/reset), mm/info
+3. **ClearnodePool** — Per-wallet lazy Clearnode connections with EIP-712 auth, connection dedup via shared promise, createAppSession for betting
+4. **SimulationEngine** — Staggered timer-based bet orchestration, resilient error handling, start/stop lifecycle, configurable SimConfig
+
+### App Commands:
+`:wallets <n>`, `:fund`, `:fund-mm [n]`, `:open`, `:close`, `:resolve ball|strike`,
+`:sim start|stop|config`, `:status`, `:reset`, `:clear`, `:reconnect`, `:quit`
+
+### Key Technical Details:
+- Uses same 3-step EIP-712 auth flow as hub ClearnodeClient
+- ClearnodePool deduplicates concurrent connect attempts via shared promise (same pattern as hub client.ts:238-245)
+- SimulationEngine is resilient: errors don't stop the simulation, they emit events and schedule next bet
+- WS message handling mirrors dashboard App.tsx patterns (STATE_SYNC, ODDS_UPDATE, MARKET_STATUS, etc.)
+- Results computed on MARKET_STATUS RESOLVED by fetching positions and matching to simulator wallets
+
+### Test Results:
+- **Simulator:** 5 suites, 102 passed
+  - wallet-manager: 21 tests
+  - hub-client: 15 tests
+  - clearnode-pool: 14 tests
+  - simulation-engine: 16 tests
+  - formatters: 36 tests
+- **TypeScript:** ✅ clean (tsc --noEmit passes)
+
+### Branch: feature/simulator
+
+---
+
+## Dashboard PositionsPanel → State Channels Table Redesign
+Date: 2026-02-05
+
+### What was done:
+Redesigned the dashboard PositionsPanel from a plain two-line layout into a professional, session-first tabular layout branded as "⚡ STATE CHANNELS" for hackathon demo impact.
+
+### Design Changes:
+1. **Title**: `⚡ STATE CHANNELS (N)` in yellow+bold — Yellow Network branding
+2. **Column headers**: SESSION | BETTOR | BET | ALLOC | v | STATUS — with gray bold text
+3. **Separator line**: `─` repeated, gray dimColor
+4. **Session ID first**: Yellow color, first column — state channels are the star
+5. **Status badges**: Unicode indicators — `● OPEN` (green), `◌ SETTLING` (yellow), `◉ SETTLED` (blue)
+6. **BET column**: Abbreviated `BALL`/`STRK` via `formatOutcomeShort()`
+7. **ALLOC column**: `costPaid` (value locked in channel) — state channel terminology
+8. **Version**: Compact `v1`/`v2` showing state channel updates
+9. **Single-line per position**: Nearly doubles visible density vs. old two-line layout
+10. **Empty state**: "Awaiting state channel activity..." instead of "No positions"
+11. **Shares column dropped**: LMSR detail that distracts from state channel narrative
+
+### Files Modified:
+- `dashboard/src/utils/formatters.ts` — Added `formatStatusBadge()`, `formatOutcomeShort()`, `formatVersion()`
+- `dashboard/src/utils/formatters.test.ts` — Added 9 tests (4 badge + 2 outcome + 3 version)
+- `dashboard/src/components/PositionsPanel.tsx` — Full rewrite with tabular layout
+- `dashboard/src/App.tsx` — Adjusted `positionsVisibleCount` from `Math.floor((rows-19)/2)` to `rows-21`
+
+### Test Results:
+- **Dashboard:** 1 suite, 47 passed
+- **Dashboard build:** ✅ clean
+
+---
+
+## Simulator Bug Fixes: Balances, Layout, Speed
+Date: 2026-02-06
+
+### Bugs Fixed
+
+**Bug 1: Balances don't update in real time**
+- Root cause: `App.tsx` hardcoded `walletManager.updateBalance(w.index, '50000000')` after funding and never updated again
+- Fix: Added `getBalance(address)` to `ClearnodePool` that fetches actual Clearnode ledger balance via `createGetLedgerBalancesMessage`/`parseGetLedgerBalancesResponse`
+- Used in 3 places: after funding (`:fund`), after each bet (SimulationEngine), on `:status` command
+- All balance fetches have fallback/silent-catch for resilience
+
+**Bug 2: Event log cramped in 40% right column**
+- Root cause: Layout was 60/40 side-by-side with EventLog behind MarketPanel+ResultsPanel in narrow right column
+- Fix: Switched to top/bottom layout — WalletTable(55%)+MarketPanel(45%) side-by-side on top (~50% height), EventLog full-width on bottom (~50% height)
+
+**Bug 3: Funding is slow (sequential)**
+- Root cause: `:fund` command awaited each wallet fund sequentially
+- Fix: Batched with `Promise.allSettled()`, 5 wallets per batch. UI updates after each batch. ~4x faster for 20 wallets.
+
+### Files Changed
+- `simulator/src/core/clearnode-pool.ts` — Added `getBalance()` method + nitrolite imports
+- `simulator/src/core/clearnode-pool.test.ts` — +2 tests (getBalance success, asset not found)
+- `simulator/src/core/simulation-engine.ts` — Balance refresh after successful bet
+- `simulator/src/core/simulation-engine.test.ts` — +2 tests (balance refresh, graceful failure)
+- `simulator/src/App.tsx` — Layout restructure + parallel funding + real balance fetch + `:status` balance refresh
+
+### Test Results
+- **Simulator:** 5 suites, 106 passed (was 102, +4 new)
+- **TypeScript:** ✅ clean (tsc --noEmit passes)
