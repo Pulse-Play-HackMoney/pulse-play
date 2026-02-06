@@ -153,9 +153,9 @@ describe('MarketManager', () => {
 
   describe('resolution logic', () => {
     const positions: Position[] = [
-      { address: '0xAAA', marketId: 'm1', outcome: 'BALL', shares: 12, costPaid: 8, appSessionId: 's1', timestamp: 1 },
-      { address: '0xBBB', marketId: 'm1', outcome: 'STRIKE', shares: 15, costPaid: 10, appSessionId: 's2', timestamp: 2 },
-      { address: '0xCCC', marketId: 'm1', outcome: 'BALL', shares: 20, costPaid: 14, appSessionId: 's3', timestamp: 3 },
+      { address: '0xAAA', marketId: 'm1', outcome: 'BALL', shares: 12, costPaid: 8, appSessionId: 's1', appSessionVersion: 1, sessionStatus: 'open', timestamp: 1 },
+      { address: '0xBBB', marketId: 'm1', outcome: 'STRIKE', shares: 15, costPaid: 10, appSessionId: 's2', appSessionVersion: 1, sessionStatus: 'open', timestamp: 2 },
+      { address: '0xCCC', marketId: 'm1', outcome: 'BALL', shares: 20, costPaid: 14, appSessionId: 's3', appSessionVersion: 1, sessionStatus: 'open', timestamp: 3 },
     ];
 
     test('18. resolveMarket(BALL) correctly identifies Ball bettors as winners', () => {

@@ -29,6 +29,8 @@ describe('Position Routes', () => {
       shares: 5,
       costPaid: 2.5,
       appSessionId: 'sess1',
+      appSessionVersion: 1,
+      sessionStatus: 'open',
       timestamp: 1000,
     });
 
@@ -47,6 +49,8 @@ describe('Position Routes', () => {
       shares: 5,
       costPaid: 2.5,
       appSessionId: 'sess1',
+      appSessionVersion: 1,
+      sessionStatus: 'open',
       timestamp: 1000,
     });
     ctx.positionTracker.addPosition({
@@ -56,6 +60,8 @@ describe('Position Routes', () => {
       shares: 3,
       costPaid: 1.5,
       appSessionId: 'sess2',
+      appSessionVersion: 1,
+      sessionStatus: 'open',
       timestamp: 2000,
     });
 
@@ -71,6 +77,8 @@ describe('Position Routes', () => {
       shares: 5,
       costPaid: 2.5,
       appSessionId: 'sess1',
+      appSessionVersion: 1,
+      sessionStatus: 'open',
       timestamp: 1000,
     });
     ctx.positionTracker.addPosition({
@@ -80,6 +88,8 @@ describe('Position Routes', () => {
       shares: 3,
       costPaid: 1.5,
       appSessionId: 'sess2',
+      appSessionVersion: 1,
+      sessionStatus: 'open',
       timestamp: 2000,
     });
 
@@ -97,6 +107,8 @@ describe('Position Routes', () => {
       shares: 5.5,
       costPaid: 2.75,
       appSessionId: 'sess1',
+      appSessionVersion: 1,
+      sessionStatus: 'open',
       timestamp: 12345,
     });
 
@@ -108,6 +120,8 @@ describe('Position Routes', () => {
       shares: 5.5,
       costPaid: 2.75,
       appSessionId: 'sess1',
+      appSessionVersion: 1,
+      sessionStatus: 'open',
       timestamp: 12345,
     });
   });

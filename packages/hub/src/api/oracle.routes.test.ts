@@ -29,7 +29,7 @@ describe('Oracle Routes', () => {
     return app.inject({
       method: 'POST',
       url: '/api/bet',
-      payload: { address, marketId, outcome, amount, appSessionId: `sess-${address}` },
+      payload: { address, marketId, outcome, amount, appSessionId: `sess-${address}`, appSessionVersion: 1 },
     });
   }
 
@@ -305,6 +305,192 @@ describe('Oracle Routes', () => {
       expect(body.success).toBe(true);
       expect(body.winners).toBe(0);
       expect(body.losers).toBe(0);
+    });
+
+    // ── Clearnode settlement ──
+
+    test('calls submitAppState + closeSession for losers', async () => {
+      const marketId = await activateAndOpenMarket();
+      await placeBet('0xBob', marketId, 'STRIKE', 10);
+      await app.inject({ method: 'POST', url: '/api/oracle/market/close' });
+
+      const submitAppState = ctx.clearnodeClient.submitAppState as jest.Mock;
+      const closeSession = ctx.clearnodeClient.closeSession as jest.Mock;
+
+      await app.inject({
+        method: 'POST',
+        url: '/api/oracle/outcome',
+        payload: { outcome: 'BALL' },
+      });
+
+      // Loser: Bob bet STRIKE, outcome is BALL
+      expect(submitAppState).toHaveBeenCalledWith(
+        expect.objectContaining({
+          appSessionId: 'sess-0xBob',
+          intent: 'operate',
+          version: 2,
+          allocations: expect.arrayContaining([
+            expect.objectContaining({ participant: '0xBob', amount: '0' }),
+            expect.objectContaining({ participant: '0xMM', amount: '10000000' }),
+          ]),
+        }),
+      );
+
+      expect(closeSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          appSessionId: 'sess-0xBob',
+          allocations: expect.arrayContaining([
+            expect.objectContaining({ participant: '0xBob', amount: '0' }),
+            expect.objectContaining({ participant: '0xMM', amount: '10000000' }),
+          ]),
+        }),
+      );
+    });
+
+    test('calls closeSession + transfer for winners', async () => {
+      const marketId = await activateAndOpenMarket();
+      await placeBet('0xAlice', marketId, 'BALL', 10);
+      await app.inject({ method: 'POST', url: '/api/oracle/market/close' });
+
+      const closeSession = ctx.clearnodeClient.closeSession as jest.Mock;
+      const transfer = ctx.clearnodeClient.transfer as jest.Mock;
+
+      await app.inject({
+        method: 'POST',
+        url: '/api/oracle/outcome',
+        payload: { outcome: 'BALL' },
+      });
+
+      // Winner: Alice bet BALL, outcome is BALL
+      // closeSession returns user's costPaid
+      expect(closeSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          appSessionId: 'sess-0xAlice',
+          allocations: expect.arrayContaining([
+            expect.objectContaining({ participant: '0xAlice', amount: '10000000' }),
+            expect.objectContaining({ participant: '0xMM', amount: '0' }),
+          ]),
+        }),
+      );
+
+      // Transfer profit (payout - costPaid). Shares > costPaid in LMSR, so there is profit.
+      expect(transfer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          destination: '0xAlice',
+          asset: 'ytest.usd',
+          amount: expect.any(String),
+        }),
+      );
+    });
+
+    test('does not call transfer when profit is zero', async () => {
+      const marketId = await activateAndOpenMarket();
+      // Place a large bet that pushes price near 1, then shares ≈ costPaid
+      // For a simpler approach: we'll mock a position directly with costPaid = shares
+      ctx.positionTracker.addPosition({
+        address: '0xEve',
+        marketId,
+        outcome: 'BALL',
+        shares: 10,
+        costPaid: 10,  // costPaid equals shares → profit = 0
+        appSessionId: 'sess-even',
+        appSessionVersion: 1,
+        sessionStatus: 'open',
+        timestamp: Date.now(),
+      });
+      await app.inject({ method: 'POST', url: '/api/oracle/market/close' });
+
+      const transfer = ctx.clearnodeClient.transfer as jest.Mock;
+      transfer.mockClear();
+
+      await app.inject({
+        method: 'POST',
+        url: '/api/oracle/outcome',
+        payload: { outcome: 'BALL' },
+      });
+
+      // Since payout (shares=10) - costPaid (10) = 0, no transfer
+      expect(transfer).not.toHaveBeenCalled();
+    });
+
+    test('continues resolution if one position Clearnode call fails', async () => {
+      const marketId = await activateAndOpenMarket();
+      await placeBet('0xAlice', marketId, 'BALL', 10);
+      await placeBet('0xBob', marketId, 'STRIKE', 10);
+      await app.inject({ method: 'POST', url: '/api/oracle/market/close' });
+
+      // Make loser's submitAppState fail
+      (ctx.clearnodeClient.submitAppState as jest.Mock).mockRejectedValueOnce(new Error('Clearnode down'));
+
+      const sendToSpy = jest.spyOn(ctx.ws, 'sendTo');
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/oracle/outcome',
+        payload: { outcome: 'BALL' },
+      });
+
+      // Should still succeed overall
+      expect(res.json().success).toBe(true);
+      // Both users should still get their BET_RESULT messages
+      expect(sendToSpy).toHaveBeenCalledWith('0xBob', expect.objectContaining({ result: 'LOSS' }));
+      expect(sendToSpy).toHaveBeenCalledWith('0xAlice', expect.objectContaining({ result: 'WIN' }));
+    });
+
+    test('processes losers before winners', async () => {
+      const marketId = await activateAndOpenMarket();
+      await placeBet('0xAlice', marketId, 'BALL', 10);
+      await placeBet('0xBob', marketId, 'STRIKE', 10);
+      await app.inject({ method: 'POST', url: '/api/oracle/market/close' });
+
+      const callOrder: string[] = [];
+      (ctx.clearnodeClient.submitAppState as jest.Mock).mockImplementation(async () => {
+        callOrder.push('submitAppState');
+        return { version: 2 };
+      });
+      (ctx.clearnodeClient.closeSession as jest.Mock).mockImplementation(async () => {
+        callOrder.push('closeSession');
+      });
+      (ctx.clearnodeClient.transfer as jest.Mock).mockImplementation(async () => {
+        callOrder.push('transfer');
+      });
+
+      await app.inject({
+        method: 'POST',
+        url: '/api/oracle/outcome',
+        payload: { outcome: 'BALL' },
+      });
+
+      // Loser operations (submitAppState + closeSession) should come before winner operations
+      const loserSubmitIdx = callOrder.indexOf('submitAppState');
+      const lastLoserIdx = callOrder.indexOf('closeSession');
+      // Winner closeSession is the second closeSession call
+      const winnerCloseIdx = callOrder.lastIndexOf('closeSession');
+
+      expect(loserSubmitIdx).toBeLessThan(winnerCloseIdx);
+      expect(lastLoserIdx).toBeLessThan(winnerCloseIdx);
+    });
+
+    test('no Clearnode calls when no positions exist', async () => {
+      await activateAndOpenMarket();
+      await app.inject({ method: 'POST', url: '/api/oracle/market/close' });
+
+      const submitAppState = ctx.clearnodeClient.submitAppState as jest.Mock;
+      const closeSession = ctx.clearnodeClient.closeSession as jest.Mock;
+      const transfer = ctx.clearnodeClient.transfer as jest.Mock;
+      submitAppState.mockClear();
+      closeSession.mockClear();
+      transfer.mockClear();
+
+      await app.inject({
+        method: 'POST',
+        url: '/api/oracle/outcome',
+        payload: { outcome: 'BALL' },
+      });
+
+      expect(submitAppState).not.toHaveBeenCalled();
+      expect(closeSession).not.toHaveBeenCalled();
+      expect(transfer).not.toHaveBeenCalled();
     });
   });
 });

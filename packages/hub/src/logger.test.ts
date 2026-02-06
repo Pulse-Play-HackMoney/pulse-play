@@ -24,6 +24,10 @@ describe('Logger', () => {
     expect(() => logger.clearnodeAutoConnect()).not.toThrow();
     expect(() => logger.clearnodeConnected('0xMM1234567890')).not.toThrow();
     expect(() => logger.clearnodeDisconnected()).not.toThrow();
+    expect(() => logger.betRejectionSessionClosed('0xSESSION123')).not.toThrow();
+    expect(() => logger.resolutionSessionClosed('0xAlice', '0xSESSION123')).not.toThrow();
+    expect(() => logger.resolutionStateUpdate('0xAlice', '0xSESSION123', 2)).not.toThrow();
+    expect(() => logger.resolutionTransfer('0xAlice', 5.5)).not.toThrow();
     expect(() => logger.wsConnect('0xAlice', 3)).not.toThrow();
     expect(() => logger.wsConnect(null, 1)).not.toThrow();
     expect(() => logger.wsDisconnect('0xBob', 2)).not.toThrow();
@@ -52,6 +56,10 @@ describe('Logger', () => {
     logger.clearnodeAutoConnect();
     logger.clearnodeConnected('0xMM1234567890');
     logger.clearnodeDisconnected();
+    logger.betRejectionSessionClosed('0xSESSION123');
+    logger.resolutionSessionClosed('0xAlice', '0xSESSION123');
+    logger.resolutionStateUpdate('0xAlice', '0xSESSION123', 2);
+    logger.resolutionTransfer('0xAlice', 5.5);
     logger.wsConnect('0x1', 1);
     logger.wsDisconnect('0x1', 0);
     logger.broadcast('TEST', 2);

@@ -8,7 +8,7 @@ export function registerMMRoutes(app: FastifyInstance, ctx: AppContext): void {
       const balance = await ctx.clearnodeClient.getBalance();
 
       ctx.log.mmInfoFetched();
-      return { address, balance };
+      return { address, balance, isConnected: true };
     } catch (err: any) {
       ctx.log.error('mm-info', err);
       return reply.status(500).send({ error: err.message ?? 'Failed to fetch MM info' });

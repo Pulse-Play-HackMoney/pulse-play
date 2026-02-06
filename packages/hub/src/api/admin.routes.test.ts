@@ -34,6 +34,8 @@ describe('Admin Routes', () => {
       shares: 5,
       costPaid: 2.5,
       appSessionId: 'sess1',
+      appSessionVersion: 1,
+      sessionStatus: 'open',
       timestamp: 1000,
     });
 
@@ -92,6 +94,8 @@ describe('Admin Routes', () => {
         shares: 5,
         costPaid: 2.5,
         appSessionId: 'sess1',
+        appSessionVersion: 1,
+        sessionStatus: 'open',
         timestamp: 1000,
       });
       ctx.positionTracker.addPosition({
@@ -101,6 +105,8 @@ describe('Admin Routes', () => {
         shares: 3,
         costPaid: 1.5,
         appSessionId: 'sess2',
+        appSessionVersion: 1,
+        sessionStatus: 'open',
         timestamp: 2000,
       });
       ctx.positionTracker.addPosition({
@@ -110,6 +116,8 @@ describe('Admin Routes', () => {
         shares: 10,
         costPaid: 5.0,
         appSessionId: 'sess3',
+        appSessionVersion: 1,
+        sessionStatus: 'open',
         timestamp: 3000,
       });
 
@@ -132,6 +140,8 @@ describe('Admin Routes', () => {
         shares: 5.5,
         costPaid: 2.75,
         appSessionId: 'sess1',
+        appSessionVersion: 1,
+        sessionStatus: 'open',
         timestamp: 1234567890,
       });
 
@@ -147,6 +157,8 @@ describe('Admin Routes', () => {
         shares: 5.5,
         costPaid: 2.75,
         appSessionId: 'sess1',
+        appSessionVersion: 1,
+        sessionStatus: 'open',
         timestamp: 1234567890,
       });
     });

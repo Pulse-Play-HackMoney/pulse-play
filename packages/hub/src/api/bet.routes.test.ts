@@ -22,6 +22,7 @@ describe('Bet Routes', () => {
     outcome: 'BALL',
     amount: 10,
     appSessionId: 'sess1',
+    appSessionVersion: 1,
   };
 
   function openMarket() {
@@ -151,5 +152,39 @@ describe('Bet Routes', () => {
         qStrike: expect.any(Number),
       }),
     );
+  });
+
+  // ── Bet rejection → closeSession ──
+
+  test('calls closeSession when market is not OPEN', async () => {
+    ctx.marketManager.createMarket('m1');
+    // market is PENDING, not OPEN
+    const closeSession = ctx.clearnodeClient.closeSession as jest.Mock;
+    await postBet(validBet);
+
+    expect(closeSession).toHaveBeenCalledWith({
+      appSessionId: 'sess1',
+      allocations: [
+        { participant: '0xAlice', asset: 'ytest.usd', amount: '10000000' },
+        { participant: '0xMM', asset: 'ytest.usd', amount: '0' },
+      ],
+    });
+  });
+
+  test('still returns rejection if closeSession fails', async () => {
+    ctx.marketManager.createMarket('m1');
+    (ctx.clearnodeClient.closeSession as jest.Mock).mockRejectedValueOnce(new Error('Clearnode down'));
+    const res = await postBet(validBet);
+    const body = res.json();
+    expect(body.accepted).toBe(false);
+    expect(body.reason).toContain('PENDING');
+  });
+
+  test('does not call closeSession for validation errors', async () => {
+    openMarket();
+    const closeSession = ctx.clearnodeClient.closeSession as jest.Mock;
+    // Missing required fields (no address)
+    await postBet({ marketId: 'm1', outcome: 'BALL', amount: 10 });
+    expect(closeSession).not.toHaveBeenCalled();
   });
 });

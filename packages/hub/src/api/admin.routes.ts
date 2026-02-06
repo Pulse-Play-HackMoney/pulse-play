@@ -28,15 +28,18 @@ export function registerAdminRoutes(app: FastifyInstance, ctx: AppContext): void
       };
     }
 
-    const positionCount = market
-      ? ctx.positionTracker.getPositionsByMarket(market.id).length
-      : 0;
+    const positions = market
+      ? ctx.positionTracker.getPositionsByMarket(market.id)
+      : [];
+    const openSessions = positions.filter((p) => p.sessionStatus === 'open').length;
+    const settledSessions = positions.filter((p) => p.sessionStatus === 'settled').length;
 
     return {
       market: marketResp,
       gameState: ctx.oracle.getGameState(),
-      positionCount,
+      positionCount: positions.length,
       connectionCount: ctx.ws.getConnectionCount(),
+      sessionCounts: { open: openSessions, settled: settledSessions },
     };
   });
 

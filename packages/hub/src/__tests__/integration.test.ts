@@ -51,6 +51,7 @@ describe('Integration Tests', () => {
       outcome,
       amount,
       appSessionId: `sess-${address}`,
+      appSessionVersion: 1,
     });
   }
 

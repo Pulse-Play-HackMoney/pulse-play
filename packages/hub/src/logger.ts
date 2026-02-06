@@ -223,6 +223,32 @@ export const logger = {
     write(`${INDENT}${DIM}├${RESET} ${CYAN}->${RESET} ${a}: ${messageType}`);
   },
 
+  // ── Settlement ─────────────────────────────────────────────────────────
+
+  betRejectionSessionClosed(appSessionId: string): void {
+    if (silent) return;
+    write(`${INDENT}${DIM}├${RESET} ${CYAN}Closed session${RESET} ${DIM}${appSessionId.slice(0, 10)}...${RESET} (bet rejected → funds returned)`);
+  },
+
+  resolutionSessionClosed(address: string, appSessionId: string): void {
+    if (silent) return;
+    const a = `${MAGENTA}${addr(address)}${RESET}`;
+    write(`${INDENT}${DIM}├${RESET} ${a} session ${DIM}${appSessionId.slice(0, 10)}...${RESET} ${GREEN}closed${RESET}`);
+  },
+
+  resolutionStateUpdate(address: string, appSessionId: string, version: number): void {
+    if (silent) return;
+    const a = `${MAGENTA}${addr(address)}${RESET}`;
+    write(`${INDENT}${DIM}├${RESET} ${a} session ${DIM}${appSessionId.slice(0, 10)}...${RESET} state → v${version}`);
+  },
+
+  resolutionTransfer(address: string, amount: number): void {
+    if (silent) return;
+    const a = `${MAGENTA}${addr(address)}${RESET}`;
+    const amt = `${GREEN}$${amount.toFixed(2)}${RESET}`;
+    write(`${INDENT}${DIM}├${RESET} ${a} profit transfer ${amt}`);
+  },
+
   // ── Errors ─────────────────────────────────────────────────────────────
 
   error(context: string, err: unknown): void {

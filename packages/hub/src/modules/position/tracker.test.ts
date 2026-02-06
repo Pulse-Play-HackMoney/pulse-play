@@ -9,6 +9,8 @@ function makePosition(overrides: Partial<Position> = {}): Position {
     shares: 10,
     costPaid: 5,
     appSessionId: 's1',
+    appSessionVersion: 1,
+    sessionStatus: 'open',
     timestamp: Date.now(),
     ...overrides,
   };
@@ -98,6 +100,31 @@ describe('PositionTracker', () => {
       tracker.clearPositions('m1');
       expect(tracker.getPositionsByMarket('m1')).toEqual([]);
       expect(tracker.getPosition('0xAAA', 'm1')).toBeNull();
+    });
+  });
+
+  // ─── Session status ──────────────────────────────────────────
+
+  describe('updateSessionStatus', () => {
+    test('11. updates status on existing position', () => {
+      tracker.addPosition(makePosition({ appSessionId: 's1' }));
+      tracker.updateSessionStatus('s1', 'settled');
+      expect(tracker.getPositionsByMarket('m1')[0].sessionStatus).toBe('settled');
+    });
+
+    test('12. no-op when session ID not found', () => {
+      tracker.addPosition(makePosition({ appSessionId: 's1' }));
+      tracker.updateSessionStatus('unknown', 'settled');
+      expect(tracker.getPositionsByMarket('m1')[0].sessionStatus).toBe('open');
+    });
+
+    test('13. updates correct position among many', () => {
+      tracker.addPosition(makePosition({ address: '0xAAA', appSessionId: 's1' }));
+      tracker.addPosition(makePosition({ address: '0xBBB', appSessionId: 's2' }));
+      tracker.updateSessionStatus('s2', 'settled');
+      const positions = tracker.getPositionsByMarket('m1');
+      expect(positions[0].sessionStatus).toBe('open');
+      expect(positions[1].sessionStatus).toBe('settled');
     });
   });
 });

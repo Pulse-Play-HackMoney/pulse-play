@@ -1,5 +1,6 @@
 import type { Outcome } from '../modules/lmsr/types.js';
 import type { MarketStatus } from '../modules/market/types.js';
+import type { SessionStatus } from '../modules/position/types.js';
 
 // ── Request DTOs ──
 
@@ -9,6 +10,7 @@ export interface BetRequest {
   outcome: Outcome;
   amount: number;
   appSessionId: string;
+  appSessionVersion: number;
 }
 
 export interface GameStateRequest {
@@ -70,6 +72,8 @@ export interface PositionsResponse {
     shares: number;
     costPaid: number;
     appSessionId: string;
+    appSessionVersion: number;
+    sessionStatus: SessionStatus;
     timestamp: number;
   }>;
 }
@@ -79,6 +83,7 @@ export interface AdminStateResponse {
   gameState: { active: boolean };
   positionCount: number;
   connectionCount: number;
+  sessionCounts: { open: number; settled: number };
 }
 
 // ── WebSocket message types ──
@@ -90,7 +95,8 @@ export type WsMessageType =
   | 'BET_RESULT'
   | 'POSITION_ADDED'
   | 'CONNECTION_COUNT'
-  | 'STATE_SYNC';
+  | 'STATE_SYNC'
+  | 'SESSION_SETTLED';
 
 export interface WsOddsUpdate {
   type: 'ODDS_UPDATE';
@@ -130,6 +136,8 @@ export interface WsPositionAdded {
     shares: number;
     costPaid: number;
     appSessionId: string;
+    appSessionVersion: number;
+    sessionStatus: SessionStatus;
     timestamp: number;
   };
   positionCount: number;
@@ -150,8 +158,17 @@ export interface WsStateSync {
     shares: number;
     costPaid: number;
     appSessionId: string;
+    appSessionVersion: number;
+    sessionStatus: SessionStatus;
     timestamp: number;
   }>;
+}
+
+export interface WsSessionSettled {
+  type: 'SESSION_SETTLED';
+  appSessionId: string;
+  status: 'settled';
+  address: string;
 }
 
 export type WsMessage =
@@ -161,4 +178,5 @@ export type WsMessage =
   | WsBetResult
   | WsPositionAdded
   | WsConnectionCount
-  | WsStateSync;
+  | WsStateSync
+  | WsSessionSettled;

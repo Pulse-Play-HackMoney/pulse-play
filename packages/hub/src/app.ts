@@ -58,6 +58,9 @@ export async function buildApp(ctx: AppContext) {
       ? ctx.positionTracker.getPositionsByMarket(market.id)
       : [];
 
+    const openSessions = positions.filter((p) => p.sessionStatus === 'open').length;
+    const settledSessions = positions.filter((p) => p.sessionStatus === 'settled').length;
+
     const stateSync: WsStateSync = {
       type: 'STATE_SYNC',
       state: {
@@ -65,6 +68,7 @@ export async function buildApp(ctx: AppContext) {
         gameState: ctx.oracle.getGameState(),
         positionCount: positions.length,
         connectionCount: ctx.ws.getConnectionCount(),
+        sessionCounts: { open: openSessions, settled: settledSessions },
       },
       positions,
     };

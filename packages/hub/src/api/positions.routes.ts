@@ -11,6 +11,8 @@ export function registerPositionRoutes(app: FastifyInstance, ctx: AppContext): v
         shares: p.shares,
         costPaid: p.costPaid,
         appSessionId: p.appSessionId,
+        appSessionVersion: p.appSessionVersion,
+        sessionStatus: p.sessionStatus,
         timestamp: p.timestamp,
       })),
     };
