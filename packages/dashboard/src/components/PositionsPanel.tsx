@@ -33,9 +33,9 @@ export function PositionsPanel({ positions, scrollOffset, visibleCount, isActive
       flexGrow={1}
     >
       {/* Title */}
-      <Box justifyContent="center" gap={1}>
+      <Box justifyContent="center" gap={1} marginBottom={1}>
         <Text bold color="yellow">
-          ⚡ APP SESSIONS ({positions.length})
+           APP SESSIONS ({positions.length})
         </Text>
         {showIndicator && (
           <Text color="gray" dimColor>
