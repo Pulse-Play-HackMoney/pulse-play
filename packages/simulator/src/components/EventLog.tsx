@@ -36,6 +36,7 @@ export function EventLog({ events, scrollOffset, visibleCount, isActive }: Event
       borderStyle="single"
       borderColor={isActive ? 'cyan' : undefined}
       paddingX={1}
+      paddingBottom={1}
       flexGrow={1}
     >
       <Box justifyContent="center" gap={1}>
