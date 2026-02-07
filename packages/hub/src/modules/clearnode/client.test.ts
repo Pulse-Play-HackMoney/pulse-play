@@ -34,11 +34,11 @@ jest.mock("./auth.js", () => ({
 
 // Mock the faucet module
 jest.mock("./faucet.js", () => ({
-  requestFaucet: jest.fn().mockResolvedValue(undefined),
+  requestFaucetQueued: jest.fn().mockResolvedValue(undefined),
 }));
 
 function getMockRequestFaucet() {
-  return require("./faucet.js").requestFaucet as jest.Mock;
+  return require("./faucet.js").requestFaucetQueued as jest.Mock;
 }
 
 // Mock WebSocket

@@ -1375,3 +1375,44 @@ After a few minutes idle, the Clearnode server drops the WebSocket. `ensureConne
 
 ### Test Results
 - **Frontend:** 24 suites, 197 passed (was 196, +1 new keepalive test)
+
+---
+
+## Fix: Intermittent Faucet Funding Failures
+Date: 2026-02-06
+
+### Problem
+When the simulator runs `:fund` for 10+ wallets, concurrent HTTP requests to the external sandbox faucet cause 503/500 errors. No retry logic and no concurrency control at any level.
+
+### Solution: Three Layers
+
+**Layer 1 — Retry with exponential backoff** (`faucet.ts`)
+- Max 3 retries (4 total attempts)
+- Backoff: 500ms base, doubling each retry, capped at 5s
+- 0-20% random jitter to prevent thundering herd
+- Retry on 5xx and network TypeError; throw immediately on 4xx
+- `console.warn` for retries (suppressed in test via `NODE_ENV`)
+
+**Layer 2 — Global request serialization queue** (`faucet.ts`)
+- `requestFaucetQueued()` chains onto a module-level promise
+- Only one HTTP request to external faucet in-flight at a time
+- `_resetFaucetQueue()` exported for test cleanup
+- Both `faucet.routes.ts` and `client.ts` switched to `requestFaucetQueued`
+
+**Layer 3 — Reduced simulator concurrency** (`simulator/App.tsx`)
+- `BATCH_SIZE` reduced from 5 to 2
+- 1000ms inter-batch delay (skipped after last batch)
+
+### Files Modified
+- `packages/hub/src/modules/clearnode/faucet.ts` — Retry + queue implementation
+- `packages/hub/src/modules/clearnode/faucet.test.ts` — **New** — 10 tests (7 retry + 3 queue)
+- `packages/hub/src/api/faucet.routes.ts` — Import `requestFaucetQueued as requestFaucet`
+- `packages/hub/src/api/faucet.routes.test.ts` — Mock exports `requestFaucetQueued`
+- `packages/hub/src/modules/clearnode/client.ts` — Import + use `requestFaucetQueued`
+- `packages/hub/src/modules/clearnode/client.test.ts` — Mock exports `requestFaucetQueued`
+- `packages/simulator/src/App.tsx` — BATCH_SIZE=2, 1s inter-batch delay
+
+### Test Results
+- **Hub:** 19 suites, 244 passed (was 233, +10 new faucet tests, 1 suite skipped)
+- **Simulator:** 5 suites, 106 passed (unchanged)
+- **Total hub+sim:** 350 passing tests

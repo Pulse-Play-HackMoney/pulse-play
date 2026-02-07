@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { AppContext } from '../context.js';
 import type { FaucetRequest, MMFaucetRequest } from './types.js';
-import { requestFaucet } from '../modules/clearnode/faucet.js';
+import { requestFaucetQueued as requestFaucet } from '../modules/clearnode/faucet.js';
 
 export function registerFaucetRoutes(app: FastifyInstance, ctx: AppContext): void {
   app.post<{ Body: FaucetRequest }>('/api/faucet/user', async (req, reply) => {

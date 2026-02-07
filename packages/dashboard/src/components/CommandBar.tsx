@@ -11,14 +11,6 @@ interface CommandBarProps {
 }
 
 export function CommandBar({ mode, commandBuffer, statusMessage, wsUrl }: CommandBarProps) {
-  if (statusMessage) {
-    return (
-      <Box paddingX={1}>
-        <Text color="green" bold>{statusMessage}</Text>
-      </Box>
-    );
-  }
-
   if (mode === 'command') {
     return (
       <Box paddingX={1}>
@@ -29,9 +21,17 @@ export function CommandBar({ mode, commandBuffer, statusMessage, wsUrl }: Comman
     );
   }
 
+  if (statusMessage) {
+    return (
+      <Box paddingX={1}>
+        <Text color="green" bold>{statusMessage}</Text>
+      </Box>
+    );
+  }
+
   // Normal mode — show keybinding hints
   return (
-    <Box paddingX={1} justifyContent="space-between">
+    <Box paddingX={1} justifyContent="space-between" flexGrow={1}>
       <Box gap={1}>
         <Text color="gray">Tab</Text>
         <Text dimColor>panel</Text>

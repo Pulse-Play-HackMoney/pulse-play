@@ -158,7 +158,7 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
           }
           setLoadingMessage(`Funding 0/${all.length}...`);
 
-          const BATCH_SIZE = 5;
+          const BATCH_SIZE = 2;
           let funded = 0;
           for (let i = 0; i < all.length; i += BATCH_SIZE) {
             const batch = all.slice(i, i + BATCH_SIZE);
@@ -186,6 +186,10 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
             }
             setWallets(walletManager.getAll()); // Update UI after each batch
             setLoadingMessage(`Funding ${funded}/${all.length}...`);
+            // Inter-batch delay to avoid overwhelming the external faucet
+            if (i + BATCH_SIZE < all.length) {
+              await new Promise((r) => setTimeout(r, 1000));
+            }
           }
           setLoadingMessage(null);
           showStatus(`Funded ${funded}/${all.length} wallets`);

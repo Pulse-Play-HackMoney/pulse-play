@@ -22,7 +22,7 @@ import {
 } from "@erc7824/nitrolite";
 import { sendAndWait } from "./rpc.js";
 import { authenticate } from "./auth.js";
-import { requestFaucet } from "./faucet.js";
+import { requestFaucetQueued } from "./faucet.js";
 import type {
   ClearnodeConfig,
   SubmitAppStateParams,
@@ -120,7 +120,7 @@ export class ClearnodeClient {
 
   /** Request test tokens from the sandbox faucet. */
   async requestFaucet(): Promise<void> {
-    await requestFaucet(this.mmAddress, this.config.faucetUrl);
+    await requestFaucetQueued(this.mmAddress, this.config.faucetUrl);
   }
 
   /** Submit an app state update (reallocate funds within an app session). */

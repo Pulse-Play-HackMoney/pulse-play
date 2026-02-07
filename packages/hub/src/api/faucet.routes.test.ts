@@ -6,7 +6,7 @@ import type { FastifyInstance } from 'fastify';
 // Mock the faucet module used by the user faucet route
 const mockRequestFaucet = jest.fn().mockResolvedValue(undefined);
 jest.mock('../modules/clearnode/faucet.js', () => ({
-  requestFaucet: (...args: unknown[]) => mockRequestFaucet(...args),
+  requestFaucetQueued: (...args: unknown[]) => mockRequestFaucet(...args),
 }));
 
 describe('Faucet Routes', () => {
