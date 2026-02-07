@@ -6,19 +6,13 @@ import type { AdminStateResponse } from '../types.js';
 interface SystemInfoProps {
   wsConnected: boolean;
   wsError: string | null;
-  reconnectAttempts: number;
   state: AdminStateResponse | null;
-  adminError: string | null;
-  adminLoading: boolean;
 }
 
 export function SystemInfo({
   wsConnected,
   wsError,
-  reconnectAttempts,
   state,
-  adminError,
-  adminLoading,
 }: SystemInfoProps) {
   return (
     <Box flexDirection="column" borderStyle="single" paddingX={1} flexShrink={0}>
@@ -37,13 +31,6 @@ export function SystemInfo({
           </Text>
         ) : wsError ? (
           <Text color="red">Error: {wsError}</Text>
-        ) : reconnectAttempts > 0 ? (
-          <>
-            <Text color="yellow">
-              <Spinner type="dots" />
-            </Text>
-            <Text color="yellow">Reconnecting ({reconnectAttempts})</Text>
-          </>
         ) : (
           <>
             <Text color="yellow">
@@ -51,25 +38,6 @@ export function SystemInfo({
             </Text>
             <Text color="yellow">Connecting...</Text>
           </>
-        )}
-      </Box>
-
-      {/* Admin API status */}
-      <Box gap={1}>
-        <Text>API:</Text>
-        {adminLoading ? (
-          <>
-            <Text color="yellow">
-              <Spinner type="dots" />
-            </Text>
-            <Text color="yellow">Loading...</Text>
-          </>
-        ) : adminError ? (
-          <Text color="red">Error: {adminError}</Text>
-        ) : (
-          <Text color="green" bold>
-            OK
-          </Text>
         )}
       </Box>
 

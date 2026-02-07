@@ -67,6 +67,12 @@ export interface WsSessionSettled {
   address: string;
 }
 
+export interface WsSessionVersionUpdated {
+  type: 'SESSION_VERSION_UPDATED';
+  appSessionId: string;
+  version: number;
+}
+
 export type WsMessage =
   | WsOddsUpdate
   | WsMarketStatus
@@ -75,7 +81,8 @@ export type WsMessage =
   | WsPositionAdded
   | WsConnectionCount
   | WsStateSync
-  | WsSessionSettled;
+  | WsSessionSettled
+  | WsSessionVersionUpdated;
 
 // ── Admin state response ──
 
@@ -90,6 +97,8 @@ export interface AdminStateResponse {
     // Backward compat
     qBall?: number;
     qStrike?: number;
+    gameId?: string;
+    categoryId?: string;
   } | null;
   prices: number[];
   outcomes: string[];
@@ -107,6 +116,7 @@ export interface Position {
   outcome: Outcome;
   shares: number;
   costPaid: number;
+  fee?: number;
   appSessionId: string;
   appSessionVersion: number;
   sessionStatus?: SessionStatus;

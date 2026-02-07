@@ -13,6 +13,11 @@ import {
   renderPriceBar,
   getStatusColor,
   getOutcomeColor,
+  getSessionStatusColor,
+  formatVersion,
+  formatStatusBadge,
+  formatOutcomeShort,
+  calculatePrices,
 } from './formatters.js';
 import type { SimEvent, WsMessage } from '../types.js';
 
@@ -171,6 +176,80 @@ describe('formatters', () => {
       expect(getOutcomeColor('X', 0)).toBe('cyan');
       expect(getOutcomeColor('Y', 1)).toBe('magenta');
       expect(getOutcomeColor('Z', 2)).toBe('yellow');
+    });
+  });
+
+  describe('getSessionStatusColor', () => {
+    it('returns green for open', () => expect(getSessionStatusColor('open')).toBe('green'));
+    it('returns yellow for settling', () => expect(getSessionStatusColor('settling')).toBe('yellow'));
+    it('returns blue for settled', () => expect(getSessionStatusColor('settled')).toBe('blue'));
+    it('returns white for unknown', () => expect(getSessionStatusColor('unknown' as any)).toBe('white'));
+  });
+
+  describe('formatVersion', () => {
+    it('formats version 1 as v1', () => expect(formatVersion(1)).toBe('v1'));
+    it('formats version 12 as v12', () => expect(formatVersion(12)).toBe('v12'));
+    it('formats version 0 as v0', () => expect(formatVersion(0)).toBe('v0'));
+  });
+
+  describe('formatStatusBadge', () => {
+    it('returns ● OPEN for open', () => expect(formatStatusBadge('open')).toBe('● OPEN'));
+    it('returns ◌ SETTLING for settling', () => expect(formatStatusBadge('settling')).toBe('◌ SETTLING'));
+    it('returns ◉ SETTLED for settled', () => expect(formatStatusBadge('settled')).toBe('◉ SETTLED'));
+    it('returns ○ UNKNOWN for unknown', () => expect(formatStatusBadge('invalid' as any)).toBe('○ UNKNOWN'));
+  });
+
+  describe('formatOutcomeShort', () => {
+    it('returns BALL for BALL', () => expect(formatOutcomeShort('BALL')).toBe('BALL'));
+    it('returns STRI for STRIKE', () => expect(formatOutcomeShort('STRIKE')).toBe('STRI'));
+  });
+
+  describe('calculatePrices', () => {
+    it('returns empty array for empty quantities', () => {
+      expect(calculatePrices([], 100)).toEqual([]);
+    });
+    it('returns equal prices for equal quantities', () => {
+      const prices = calculatePrices([0, 0], 100);
+      expect(prices[0]).toBeCloseTo(0.5);
+      expect(prices[1]).toBeCloseTo(0.5);
+    });
+    it('returns equal prices for 3 equal quantities', () => {
+      const prices = calculatePrices([0, 0, 0], 100);
+      prices.forEach((p) => expect(p).toBeCloseTo(1 / 3));
+    });
+    it('prices sum to 1', () => {
+      const prices = calculatePrices([10, 20, 5], 50);
+      const sum = prices.reduce((a, v) => a + v, 0);
+      expect(sum).toBeCloseTo(1);
+    });
+    it('higher quantity yields higher price', () => {
+      const prices = calculatePrices([10, 20], 100);
+      expect(prices[1]).toBeGreaterThan(prices[0]);
+    });
+    it('handles large quantities without overflow', () => {
+      const prices = calculatePrices([1000, 1000], 1);
+      expect(prices[0]).toBeCloseTo(0.5);
+      expect(prices[1]).toBeCloseTo(0.5);
+    });
+  });
+
+  describe('formatWsMessage — session messages', () => {
+    it('formats SESSION_VERSION_UPDATED', () => {
+      const msg: WsMessage = {
+        type: 'SESSION_VERSION_UPDATED',
+        appSessionId: '0xABCDEF1234567890ABCDEF1234567890ABCDEF12',
+        version: 2,
+      };
+      expect(formatWsMessage(msg)).toBe('0xABCD..EF12 → v2');
+    });
+    it('formats SESSION_SETTLED', () => {
+      const msg: WsMessage = {
+        type: 'SESSION_SETTLED',
+        appSessionId: '0xABCDEF1234567890ABCDEF1234567890ABCDEF12',
+        status: 'settled',
+        address: '0x1234567890abcdef1234567890abcdef12345678',
+      };
+      expect(formatWsMessage(msg)).toBe('0x1234..5678 session 0xABCD..EF12 settled');
     });
   });
 });

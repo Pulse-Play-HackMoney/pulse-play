@@ -76,7 +76,7 @@ export function PositionsPanel({ positions, scrollOffset, visibleCount, isActive
             </Text>
             <Text color="green">
               {formatDollars(pos.appSessionVersion === 1 ? pos.costPaid :
-                pos.appSessionVersion === 2 ? pos.costPaid - pos.fee : 0).padStart(6).padEnd(8)}
+                pos.appSessionVersion === 2 ? pos.costPaid - (pos.fee ?? 0) : 0).padStart(6).padEnd(8)}
             </Text>
             <Text color="white" dimColor>
               {formatVersion(pos.appSessionVersion).padStart(4).padEnd(9)}

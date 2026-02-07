@@ -1919,3 +1919,39 @@ Date: 2026-02-07
 - Shares from LMSR use `netAmount` (fee reduces shares)
 - `costPaid` = full `amount` (what user put up)
 - Winner total return: `netAmount` (session close) + `profit` (transfer) = `payout - fee`
+
+---
+
+## Dashboard Merged into Simulator
+Date: 2026-02-07
+
+### What was done:
+Merged `packages/dashboard/` into `packages/simulator/`, then deleted the dashboard package. The simulator was already a superset (wallets, sim engine, oracle commands) — dashboard only had a few unique features that needed porting.
+
+### Features Ported from Dashboard:
+1. **PositionsPanel** — App session table (session ID, bettor, bet, allocation, version, status) with scroll support
+2. **SystemInfo** — Connection health panel (WS status, client count, game state, positions, session counts) with ink-spinner
+3. **`:games` command** — Fetches and lists all games in event log
+4. **`:sports` command** — Fetches and lists all sports/categories in event log
+5. **WS handlers** — POSITION_ADDED (tracks positions + session counts), SESSION_VERSION_UPDATED (updates version), SESSION_SETTLED (updates status + session counts)
+
+### Changes Made:
+- **types.ts** — Added `WsSessionVersionUpdated`, `fee?` on Position, `gameId?`/`categoryId?` on AdminStateResponse.market
+- **formatters.ts** — Added `formatVersion`, `formatStatusBadge`, `formatOutcomeShort`, `calculatePrices`, `SESSION_VERSION_UPDATED` case in formatWsMessage, updated SESSION_SETTLED to include appSessionId
+- **App.tsx** — Added positions state, 3-panel tab cycling (wallets→positions→eventLog), positions scroll, WS handlers for session lifecycle, :games/:sports commands, SystemInfo in layout, PositionsPanel as alternate left panel
+- **PositionsPanel.tsx** — NEW (adapted from dashboard)
+- **SystemInfo.tsx** — NEW (simplified from dashboard — removed admin API polling, uses existing WS state)
+- **HelpOverlay.tsx** — Added :games/:sports commands
+- **package.json** — Added ink-spinner dependency
+- **components/index.ts** — Added PositionsPanel, SystemInfo exports
+- **formatters.test.ts** — Added 21 new tests (session status colors, formatVersion, formatStatusBadge, formatOutcomeShort, calculatePrices, SESSION_VERSION_UPDATED/SESSION_SETTLED formatting)
+
+### Deleted:
+- `packages/dashboard/` — Entire package removed
+
+### Test Results:
+- **Simulator:** 5 suites, 133 passed (was ~112, +21 new formatter tests)
+- **TypeScript:** Zero compilation errors
+- **Workspace:** dashboard no longer listed in `pnpm -r list`
+
+### Branch: feature/dashboard-migration (worktree at ../pulse-play-dashboard-migration)

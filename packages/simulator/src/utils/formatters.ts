@@ -151,7 +151,9 @@ export function formatWsMessage(msg: WsMessage): string {
     case 'STATE_SYNC':
       return `Synced (${msg.positions.length} positions)`;
     case 'SESSION_SETTLED':
-      return `${truncateAddress(msg.address)} session settled`;
+      return `${truncateAddress(msg.address)} session ${truncateAddress(msg.appSessionId)} settled`;
+    case 'SESSION_VERSION_UPDATED':
+      return `${truncateAddress(msg.appSessionId)} → v${msg.version}`;
     default:
       return JSON.stringify(msg);
   }
@@ -161,4 +163,34 @@ export function formatWsMessage(msg: WsMessage): string {
 export function formatBalance(microunits: string): string {
   const amount = Number(microunits) / 1_000_000;
   return `$${amount.toFixed(2)}`;
+}
+
+/** Formats state channel version compactly. */
+export function formatVersion(version: number): string {
+  return `v${version}`;
+}
+
+/** Formats session status as a Unicode badge. */
+export function formatStatusBadge(status: SessionStatus): string {
+  switch (status) {
+    case 'open': return '● OPEN';
+    case 'settling': return '◌ SETTLING';
+    case 'settled': return '◉ SETTLED';
+    default: return '○ UNKNOWN';
+  }
+}
+
+/** Formats outcome as a 4-char abbreviation. */
+export function formatOutcomeShort(outcome: Outcome): string {
+  if (outcome.length <= 4) return outcome;
+  return outcome.slice(0, 4).toUpperCase();
+}
+
+/** Calculate N-outcome prices from market quantities using LMSR softmax (log-sum-exp trick). */
+export function calculatePrices(quantities: number[], b: number): number[] {
+  if (quantities.length === 0) return [];
+  const maxQ = Math.max(...quantities);
+  const exps = quantities.map((q) => Math.exp((q - maxQ) / b));
+  const sumExp = exps.reduce((a, v) => a + v, 0);
+  return exps.map((e) => e / sumExp);
 }

@@ -20,6 +20,8 @@ export function HelpOverlay({ height }: HelpOverlayProps) {
     { key: ':status', desc: 'Show backend state' },
     { key: ':reset', desc: 'Reset backend + clear wallets' },
     { key: ':fund-mm [n]', desc: 'Fund market maker ($10 x n)' },
+    { key: ':games', desc: 'List games in event log' },
+    { key: ':sports', desc: 'List sports in event log' },
     { header: 'Navigation' },
     { key: 'Tab', desc: 'Switch active panel' },
     { key: 'j / k', desc: 'Scroll active panel' },

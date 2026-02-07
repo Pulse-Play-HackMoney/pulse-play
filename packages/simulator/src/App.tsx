@@ -9,6 +9,8 @@ import { EventLog } from './components/EventLog.js';
 import { CommandBar } from './components/CommandBar.js';
 import { ResultsPanel } from './components/ResultsPanel.js';
 import { HelpOverlay } from './components/HelpOverlay.js';
+import { PositionsPanel } from './components/PositionsPanel.js';
+import { SystemInfo } from './components/SystemInfo.js';
 import { WalletManager } from './core/wallet-manager.js';
 import { HubClient } from './core/hub-client.js';
 import { ClearnodePool } from './core/clearnode-pool.js';
@@ -34,7 +36,7 @@ interface AppProps {
 }
 
 type UIMode = 'normal' | 'command' | 'help';
-type ActivePanel = 'wallets' | 'eventLog';
+type ActivePanel = 'wallets' | 'positions' | 'eventLog';
 
 const MAX_EVENT_LOG_SIZE = 100;
 
@@ -60,11 +62,13 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
   const [simStatus, setSimStatus] = useState<SimStatus>('idle');
   const [results, setResults] = useState<SimResults | null>(null);
   const [mmBalance, setMmBalance] = useState<string | null>(null);
+  const [positions, setPositions] = useState<Position[]>([]);
 
   // UI state
   const [uiMode, setUiMode] = useState<UIMode>('normal');
   const [activePanel, setActivePanel] = useState<ActivePanel>('wallets');
   const [walletsScrollOffset, setWalletsScrollOffset] = useState(0);
+  const [positionsScrollOffset, setPositionsScrollOffset] = useState(0);
   const [eventLogScrollOffset, setEventLogScrollOffset] = useState(0);
   const [commandBuffer, setCommandBuffer] = useState('');
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -80,8 +84,10 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
   const topHeight = Math.max(Math.floor((rows - 4) * 0.5), 6);
   const bottomHeight = Math.max(rows - 4 - topHeight, 4);
   const walletsVisibleCount = Math.max(topHeight - 3, 1);
+  const positionsVisibleCount = Math.max(topHeight - 5, 1);
   const eventLogVisibleCount = Math.max(bottomHeight - 2, 1);
   const barWidth = Math.max(Math.floor(columns * 0.45) - 6, 10);
+  const leftPanelWidth = Math.max(Math.floor(columns * 0.55) - 4, 10);
 
   // Refresh MM balance from hub
   const refreshMMBalance = useCallback(async () => {
@@ -368,6 +374,44 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
           break;
         }
 
+        case 'games': {
+          try {
+            const res = await fetch(`${hubRestUrl}/api/games`);
+            const data: any = await res.json();
+            const games = data.games ?? data;
+            if (!Array.isArray(games) || games.length === 0) {
+              showStatus('No games found');
+            } else {
+              showStatus(`${games.length} game(s)`);
+              for (const g of games) {
+                addEvent('INFO', `${g.id} [${g.status}] ${g.sportId} — ${g.homeTeam} vs ${g.awayTeam}`);
+              }
+            }
+          } catch (err) {
+            showStatus(`Games fetch failed: ${(err as Error).message}`);
+          }
+          break;
+        }
+
+        case 'sports': {
+          try {
+            const res = await fetch(`${hubRestUrl}/api/sports`);
+            const data: any = await res.json();
+            const sports = data.sports ?? data;
+            if (!Array.isArray(sports) || sports.length === 0) {
+              showStatus('No sports found');
+            } else {
+              showStatus(`${sports.length} sport(s)`);
+              for (const s of sports) {
+                addEvent('INFO', `${s.id}: ${s.name} — ${(s.categories ?? []).map((c: any) => `${c.id}(${(c.outcomes ?? []).join('/')})`).join(', ')}`);
+              }
+            }
+          } catch (err) {
+            showStatus(`Sports fetch failed: ${(err as Error).message}`);
+          }
+          break;
+        }
+
         case 'quit':
         case 'q': {
           simEngine.stop();
@@ -382,7 +426,7 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
     } catch (err) {
       showStatus(`Error: ${(err as Error).message}`);
     }
-  }, [walletManager, hubClient, clearnodePool, simEngine, adminState, outcomes, showStatus, addEvent, reconnect, exit, refreshMMBalance]);
+  }, [walletManager, hubClient, clearnodePool, simEngine, adminState, outcomes, showStatus, addEvent, reconnect, exit, refreshMMBalance, hubRestUrl]);
 
   // Input routing
   useInput((input, key) => {
@@ -408,7 +452,14 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
     if (input === 'q') { simEngine.stop(); clearnodePool.clear(); exit(); return; }
     if (input === '?') { setUiMode('help'); return; }
     if (input === ':') { setUiMode('command'); setCommandBuffer(''); return; }
-    if (key.tab) { setActivePanel((p) => p === 'wallets' ? 'eventLog' : 'wallets'); return; }
+    if (key.tab) {
+      setActivePanel((p) => {
+        if (p === 'wallets') return 'positions';
+        if (p === 'positions') return 'eventLog';
+        return 'wallets';
+      });
+      return;
+    }
 
     const scrollDown = input === 'j' || key.downArrow;
     const scrollUp = input === 'k' || key.upArrow;
@@ -421,6 +472,12 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
       else if (scrollUp) setWalletsScrollOffset((p) => Math.max(p - 1, 0));
       else if (goTop) setWalletsScrollOffset(0);
       else if (goBottom) setWalletsScrollOffset(maxOffset);
+    } else if (activePanel === 'positions') {
+      const maxOffset = Math.max(0, positions.length - positionsVisibleCount);
+      if (scrollDown) setPositionsScrollOffset((p) => Math.min(p + 1, maxOffset));
+      else if (scrollUp) setPositionsScrollOffset((p) => Math.max(p - 1, 0));
+      else if (goTop) setPositionsScrollOffset(0);
+      else if (goBottom) setPositionsScrollOffset(maxOffset);
     } else {
       const maxOffset = Math.max(0, events.length - eventLogVisibleCount);
       if (scrollDown) { setEventLogScrollOffset((p) => Math.min(p + 1, maxOffset)); userScrolledRef.current = true; }
@@ -435,6 +492,7 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
     switch (msg.type) {
       case 'STATE_SYNC':
         setAdminState(msg.state);
+        setPositions(msg.positions);
         if (msg.state.prices) setPrices(msg.state.prices);
         if (msg.state.outcomes) setOutcomes(msg.state.outcomes);
         if (msg.state.market?.quantities) setQuantities(msg.state.market.quantities);
@@ -453,6 +511,8 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
           if (!prev) return prev;
           const isNew = !prev.market || prev.market.id !== msg.marketId;
           if (isNew) {
+            setPositions([]);
+            setPositionsScrollOffset(0);
             const n = outcomes.length || 2;
             setPrices(Array(n).fill(1 / n));
             setQuantities(Array(n).fill(0));
@@ -484,9 +544,17 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
         setAdminState((prev) => prev ? { ...prev, gameState: { active: msg.active } } : prev);
         break;
       case 'POSITION_ADDED':
-        setAdminState((prev) => prev ? { ...prev, positionCount: msg.positionCount } : prev);
-        const posWallet = walletManager.getByAddress(msg.position.address);
-        if (posWallet) {
+        setAdminState((prev) => {
+          if (!prev) return prev;
+          const open = (prev.sessionCounts?.open ?? 0) + 1;
+          return {
+            ...prev,
+            positionCount: msg.positionCount,
+            sessionCounts: { open, settled: prev.sessionCounts?.settled ?? 0 },
+          };
+        });
+        setPositions((prev) => [...prev, msg.position]);
+        if (walletManager.getByAddress(msg.position.address)) {
           setWallets(walletManager.getAll());
         }
         break;
@@ -495,7 +563,32 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
         break;
       case 'BET_RESULT':
         break;
+      case 'SESSION_VERSION_UPDATED':
+        setPositions((prev) =>
+          prev.map((p) =>
+            p.appSessionId === msg.appSessionId
+              ? { ...p, appSessionVersion: msg.version }
+              : p
+          )
+        );
+        break;
       case 'SESSION_SETTLED':
+        setPositions((prev) =>
+          prev.map((p) =>
+            p.appSessionId === msg.appSessionId
+              ? { ...p, sessionStatus: msg.status }
+              : p
+          )
+        );
+        setAdminState((prev) => {
+          if (!prev) return prev;
+          const open = (prev.sessionCounts?.open ?? 0) - 1;
+          const settled = (prev.sessionCounts?.settled ?? 0) + 1;
+          return {
+            ...prev,
+            sessionCounts: { open: Math.max(0, open), settled },
+          };
+        });
         refreshMMBalance();
         break;
     }
@@ -579,17 +672,32 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
         <HelpOverlay height={rows - 4} />
       ) : (
         <Box flexDirection="column" flexGrow={1}>
-          {/* Top row: wallets (55%) + market/results (45%) side-by-side */}
+          {/* Top row: left panel (55%) + market/system (45%) side-by-side */}
           <Box height={topHeight}>
             <Box flexDirection="column" width="55%">
-              <WalletTable
-                wallets={wallets}
-                scrollOffset={walletsScrollOffset}
-                visibleCount={walletsVisibleCount}
-                isActive={activePanel === 'wallets'}
-              />
+              {activePanel === 'positions' ? (
+                <PositionsPanel
+                  positions={positions}
+                  scrollOffset={positionsScrollOffset}
+                  visibleCount={positionsVisibleCount}
+                  isActive={activePanel === 'positions'}
+                  panelWidth={leftPanelWidth}
+                />
+              ) : (
+                <WalletTable
+                  wallets={wallets}
+                  scrollOffset={walletsScrollOffset}
+                  visibleCount={walletsVisibleCount}
+                  isActive={activePanel === 'wallets'}
+                />
+              )}
             </Box>
             <Box flexDirection="column" width="45%">
+              <SystemInfo
+                wsConnected={connected}
+                wsError={wsError}
+                state={adminState}
+              />
               <MarketPanel
                 state={adminState}
                 prices={prices}

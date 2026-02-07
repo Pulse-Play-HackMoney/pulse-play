@@ -6,3 +6,5 @@ export { EventLog } from './EventLog.js';
 export { CommandBar } from './CommandBar.js';
 export { ResultsPanel } from './ResultsPanel.js';
 export { HelpOverlay } from './HelpOverlay.js';
+export { PositionsPanel } from './PositionsPanel.js';
+export { SystemInfo } from './SystemInfo.js';
