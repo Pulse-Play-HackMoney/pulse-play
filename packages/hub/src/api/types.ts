@@ -194,6 +194,7 @@ export interface WsSessionVersionUpdated {
   type: 'SESSION_VERSION_UPDATED';
   appSessionId: string;
   version: number;
+  sessionData?: string;
 }
 
 export interface WsConfigUpdated {

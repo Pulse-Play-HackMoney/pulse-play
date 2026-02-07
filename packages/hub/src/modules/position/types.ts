@@ -12,5 +12,6 @@ export interface Position {
   appSessionId: string;
   appSessionVersion: number;
   sessionStatus: SessionStatus;
+  sessionData?: string;
   timestamp: number;
 }

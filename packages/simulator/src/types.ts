@@ -67,6 +67,13 @@ export interface WsSessionSettled {
   address: string;
 }
 
+export interface WsSessionVersionUpdated {
+  type: 'SESSION_VERSION_UPDATED';
+  appSessionId: string;
+  version: number;
+  sessionData?: string;
+}
+
 export type WsMessage =
   | WsOddsUpdate
   | WsMarketStatus
@@ -75,7 +82,8 @@ export type WsMessage =
   | WsPositionAdded
   | WsConnectionCount
   | WsStateSync
-  | WsSessionSettled;
+  | WsSessionSettled
+  | WsSessionVersionUpdated;
 
 // ── Admin state response ──
 
@@ -90,6 +98,8 @@ export interface AdminStateResponse {
     // Backward compat
     qBall?: number;
     qStrike?: number;
+    gameId?: string;
+    categoryId?: string;
   } | null;
   prices: number[];
   outcomes: string[];
@@ -107,10 +117,23 @@ export interface Position {
   outcome: Outcome;
   shares: number;
   costPaid: number;
+  fee?: number;
   appSessionId: string;
   appSessionVersion: number;
   sessionStatus?: SessionStatus;
+  sessionData?: string;
   timestamp: number;
+}
+
+// ── Market summary (for :markets overlay) ──
+
+export interface MarketSummary {
+  id: string;
+  gameId: string;
+  categoryId: string;
+  status: MarketStatus;
+  outcome: string | null;
+  createdAt: number;
 }
 
 // ── Hub API types ──

@@ -26,8 +26,9 @@ function getEventColor(type: string): string {
 }
 
 export function EventLog({ events, scrollOffset, visibleCount, isActive }: EventLogProps) {
-  const displayEvents = events.slice(scrollOffset, scrollOffset + visibleCount);
-  const endIndex = Math.min(scrollOffset + visibleCount, events.length);
+  const safeOffset = Math.max(0, Math.min(scrollOffset, Math.max(0, events.length - visibleCount)));
+  const displayEvents = events.slice(safeOffset, safeOffset + visibleCount);
+  const endIndex = Math.min(safeOffset + visibleCount, events.length);
   const showIndicator = events.length > visibleCount;
 
   return (
@@ -36,21 +37,21 @@ export function EventLog({ events, scrollOffset, visibleCount, isActive }: Event
       borderStyle="single"
       borderColor={isActive ? 'cyan' : undefined}
       paddingX={1}
-      paddingBottom={1}
+      // paddingBottom={}
       flexGrow={1}
     >
       <Box justifyContent="center" gap={1}>
         <Text bold color="white">EVENT LOG</Text>
         {showIndicator && (
           <Text color="gray" dimColor>
-            {scrollOffset + 1}-{endIndex} of {events.length}
+            {safeOffset + 1}-{endIndex} of {events.length}
           </Text>
         )}
       </Box>
 
       {displayEvents.length > 0 ? (
         displayEvents.map((event, idx) => (
-          <Box key={`${event.timestamp.getTime()}-${scrollOffset + idx}`} gap={1}>
+          <Box key={`${event.timestamp.getTime()}-${safeOffset + idx}`} gap={1}>
             <Text color="gray">{formatTime(event.timestamp)}</Text>
             <Text color={getEventColor(event.type)}>[{event.type}]</Text>
             <Text>{event.message}</Text>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import type { AdminStateResponse } from '../types.js';
+import type { AdminStateResponse, SimResults } from '../types.js';
 import { getStatusColor, getOutcomeColor, formatDollars, formatBalance } from '../utils/formatters.js';
 import { PriceBar } from './PriceBar.js';
 
@@ -12,9 +12,10 @@ interface MarketPanelProps {
   barWidth?: number;
   betCount?: number;
   mmBalance?: string | null;
+  results?: SimResults | null;
 }
 
-export function MarketPanel({ state, prices, outcomes, quantities, barWidth = 20, betCount = 0, mmBalance }: MarketPanelProps) {
+export function MarketPanel({ state, prices, outcomes, quantities, barWidth = 20, betCount = 0, mmBalance, results }: MarketPanelProps) {
   const market = state?.market;
   const statusColor = market ? getStatusColor(market.status) : 'gray';
 
@@ -61,6 +62,21 @@ export function MarketPanel({ state, prices, outcomes, quantities, barWidth = 20
               MM: {mmBalance ? formatBalance(mmBalance) : '--'}
             </Text>
           </Box>
+
+          {/* Results summary (shown after resolution) */}
+          {results && market.status === 'RESOLVED' && (
+            <Box marginTop={1} gap={2}>
+              <Text color={getOutcomeColor(results.outcome)} bold>
+                {results.outcome}
+              </Text>
+              <Text color="green">
+                W:{results.winners.length} +{formatDollars(results.totalPayout)}
+              </Text>
+              <Text color="red">
+                L:{results.losers.length} -{formatDollars(results.totalLoss)}
+              </Text>
+            </Box>
+          )}
         </>
       ) : (
         <Box>

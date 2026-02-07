@@ -179,6 +179,13 @@ export class MarketManager {
     return row ? toMarket(row) : null;
   }
 
+  getAllMarkets(): Market[] {
+    const rows = this.db.select().from(markets)
+      .orderBy(desc(markets.createdAt))
+      .all();
+    return rows.map(toMarket);
+  }
+
   getMarketsByGame(gameId: string): Market[] {
     const rows = this.db.select().from(markets)
       .where(eq(markets.gameId, gameId))

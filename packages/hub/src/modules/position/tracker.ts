@@ -15,6 +15,7 @@ function toPosition(row: typeof positions.$inferSelect): Position {
     appSessionId: row.appSessionId,
     appSessionVersion: row.appSessionVersion,
     sessionStatus: row.sessionStatus as SessionStatus,
+    sessionData: row.sessionData ?? undefined,
     timestamp: row.createdAt,
   };
 }
@@ -81,6 +82,13 @@ export class PositionTracker {
   updateAppSessionVersion(appSessionId: string, version: number): void {
     this.db.update(positions)
       .set({ appSessionVersion: version })
+      .where(eq(positions.appSessionId, appSessionId))
+      .run();
+  }
+
+  updateSessionData(appSessionId: string, data: string): void {
+    this.db.update(positions)
+      .set({ sessionData: data })
       .where(eq(positions.appSessionId, appSessionId))
       .run();
   }

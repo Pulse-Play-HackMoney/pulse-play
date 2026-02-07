@@ -4,7 +4,8 @@ import type { WsMessage } from '../types.js';
 
 export interface UseWebSocketResult {
   connected: boolean;
-  lastMessage: WsMessage | null;
+  messageQueue: React.RefObject<WsMessage[]>;
+  queueVersion: number;
   error: string | null;
   reconnectAttempts: number;
   reconnect: () => void;
@@ -15,10 +16,11 @@ const MAX_RECONNECT_ATTEMPTS = 10;
 
 export function useWebSocket(url: string): UseWebSocketResult {
   const [connected, setConnected] = useState(false);
-  const [lastMessage, setLastMessage] = useState<WsMessage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
+  const [queueVersion, setQueueVersion] = useState(0);
 
+  const messageQueueRef = useRef<WsMessage[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
@@ -41,7 +43,8 @@ export function useWebSocket(url: string): UseWebSocketResult {
         if (!mountedRef.current) return;
         try {
           const message = JSON.parse(data.toString()) as WsMessage;
-          setLastMessage(message);
+          messageQueueRef.current.push(message);
+          setQueueVersion((v) => v + 1);
         } catch {
           // Ignore non-JSON messages
         }
@@ -84,6 +87,7 @@ export function useWebSocket(url: string): UseWebSocketResult {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
     }
+    messageQueueRef.current.length = 0;
     setReconnectAttempts(0);
     setConnected(false);
     setError(null);
@@ -106,5 +110,5 @@ export function useWebSocket(url: string): UseWebSocketResult {
     };
   }, [connect]);
 
-  return { connected, lastMessage, error, reconnectAttempts, reconnect };
+  return { connected, messageQueue: messageQueueRef, queueVersion, error, reconnectAttempts, reconnect };
 }

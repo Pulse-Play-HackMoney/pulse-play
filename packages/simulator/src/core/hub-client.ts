@@ -5,6 +5,7 @@ import type {
   MMInfoResponse,
   Outcome,
   Position,
+  MarketSummary,
 } from '../types.js';
 
 export interface HubClientConfig {
@@ -75,6 +76,16 @@ export class HubClient {
   /** Get categories for a sport. */
   async getSportCategories(sportId: string): Promise<{ categories: Array<{ id: string; name: string; outcomes: string[] }> }> {
     return this.get(`/api/sports/${sportId}/categories`);
+  }
+
+  /** Get all markets. */
+  async getMarkets(): Promise<{ markets: MarketSummary[] }> {
+    return this.get('/api/markets');
+  }
+
+  /** Get a specific market with prices. */
+  async getMarket(marketId: string): Promise<{ market: any; prices: number[]; outcomes: string[] }> {
+    return this.get(`/api/market/${marketId}`);
   }
 
   /** Get full admin state. */

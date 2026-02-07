@@ -148,11 +148,14 @@ export function registerBetRoutes(app: FastifyInstance, ctx: AppContext): void {
         ],
         sessionData: encodeSessionData(v2Data),
       });
+      const v2SessionDataStr = encodeSessionData(v2Data);
       ctx.positionTracker.updateAppSessionVersion(appSessionId, appSessionVersion + 1);
+      ctx.positionTracker.updateSessionData(appSessionId, v2SessionDataStr);
       ctx.ws.broadcast({
         type: 'SESSION_VERSION_UPDATED',
         appSessionId,
         version: appSessionVersion + 1,
+        sessionData: v2SessionDataStr,
       });
       ctx.log.betSessionDataUpdated(address, appSessionId, appSessionVersion + 1);
     } catch (err) {

@@ -46,6 +46,20 @@ function buildMarketResponse(market: Market | null, ctx: AppContext) {
 }
 
 export function registerMarketRoutes(app: FastifyInstance, ctx: AppContext): void {
+  app.get('/api/markets', async () => {
+    const allMarkets = ctx.marketManager.getAllMarkets();
+    return {
+      markets: allMarkets.map((m) => ({
+        id: m.id,
+        gameId: m.gameId,
+        categoryId: m.categoryId,
+        status: m.status,
+        outcome: m.outcome,
+        createdAt: m.createdAt,
+      })),
+    };
+  });
+
   app.get('/api/market', async () => {
     const market = ctx.marketManager.getCurrentMarket();
     return buildMarketResponse(market, ctx);

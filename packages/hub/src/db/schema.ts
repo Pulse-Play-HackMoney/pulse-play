@@ -67,6 +67,7 @@ export const positions = sqliteTable('positions', {
   appSessionId: text('app_session_id').notNull(),
   appSessionVersion: integer('app_session_version').notNull(),
   sessionStatus: text('session_status').notNull().default('open'),
+  sessionData: text('session_data'),
   createdAt: integer('created_at').notNull(),
 }, (table) => [
   index('idx_positions_market').on(table.marketId),

@@ -1920,6 +1920,136 @@ Date: 2026-02-07
 - `costPaid` = full `amount` (what user put up)
 - Winner total return: `netAmount` (session close) + `profit` (transfer) = `payout - fee`
 
+---
+
+## Dashboard Merged into Simulator
+Date: 2026-02-07
+
+### What was done:
+Merged `packages/dashboard/` into `packages/simulator/`, then deleted the dashboard package. The simulator was already a superset (wallets, sim engine, oracle commands) — dashboard only had a few unique features that needed porting.
+
+### Features Ported from Dashboard:
+1. **PositionsPanel** — App session table (session ID, bettor, bet, allocation, version, status) with scroll support
+2. **SystemInfo** — Connection health panel (WS status, client count, game state, positions, session counts) with ink-spinner
+3. **`:games` command** — Fetches and lists all games in event log
+4. **`:sports` command** — Fetches and lists all sports/categories in event log
+5. **WS handlers** — POSITION_ADDED (tracks positions + session counts), SESSION_VERSION_UPDATED (updates version), SESSION_SETTLED (updates status + session counts)
+
+### Changes Made:
+- **types.ts** — Added `WsSessionVersionUpdated`, `fee?` on Position, `gameId?`/`categoryId?` on AdminStateResponse.market
+- **formatters.ts** — Added `formatVersion`, `formatStatusBadge`, `formatOutcomeShort`, `calculatePrices`, `SESSION_VERSION_UPDATED` case in formatWsMessage, updated SESSION_SETTLED to include appSessionId
+- **App.tsx** — Added positions state, 3-panel tab cycling (wallets→positions→eventLog), positions scroll, WS handlers for session lifecycle, :games/:sports commands, SystemInfo in layout, PositionsPanel as alternate left panel
+- **PositionsPanel.tsx** — NEW (adapted from dashboard)
+- **SystemInfo.tsx** — NEW (simplified from dashboard — removed admin API polling, uses existing WS state)
+- **HelpOverlay.tsx** — Added :games/:sports commands
+- **package.json** — Added ink-spinner dependency
+- **components/index.ts** — Added PositionsPanel, SystemInfo exports
+- **formatters.test.ts** — Added 21 new tests (session status colors, formatVersion, formatStatusBadge, formatOutcomeShort, calculatePrices, SESSION_VERSION_UPDATED/SESSION_SETTLED formatting)
+
+### Deleted:
+- `packages/dashboard/` — Entire package removed
+
+### Test Results:
+- **Simulator:** 5 suites, 133 passed (was ~112, +21 new formatter tests)
+- **TypeScript:** Zero compilation errors
+- **Workspace:** dashboard no longer listed in `pnpm -r list`
+
+### Branch: feature/dashboard-migration (worktree at ../pulse-play-dashboard-migration)
+
+---
+
+## Simulator Bug Fixes + Enhancements
+Date: 2026-02-07
+
+### Bug 1: HelpOverlay center-justified text
+**Root cause:** `alignItems="center"` on outer Box centered all children horizontally, misaligning key/description columns.
+**Fix:** Removed `alignItems="center"` from outer Box. Added `alignSelf="center"` only on title, separator, and footer elements. Command rows now left-align with `paddingLeft={4}`.
+**File:** `simulator/src/components/HelpOverlay.tsx`
+
+### Bug 2: Layout restructure — all panels always visible
+**Problem:** Tab cycling between Wallets/Positions meant only one showed at a time. EventLog was in a cramped bottom section.
+**New layout:**
+- Left column (55%): PositionsPanel (top half) + EventLog (bottom half) — always visible
+- Right column (45%): SystemInfo (fixed height) + WalletTable (fills remaining)
+- MarketPanel: full-width compact bar above CommandBar
+- Tab cycles focus (positions → eventLog → wallets) for scroll/keyboard control only
+- Default active panel is now 'positions'
+**File:** `simulator/src/App.tsx`
+
+### Bug 3: Wallet balances not updating in real-time
+**Root cause:** After bets and resolution, wallet balances only refreshed on manual `:status`.
+**Fix:** Added `clearnodePool.getBalance()` calls in two WS handlers:
+1. `POSITION_ADDED` — If the bettor is a sim wallet, refresh their balance
+2. `SESSION_SETTLED` — If the settled wallet is a sim wallet, refresh their balance
+Both wrapped in `.catch()` for non-fatal resilience.
+**File:** `simulator/src/App.tsx`
+
+### Bug 4: ResultsPanel shows 0s + merge into MarketPanel
+**Root cause:** `computeResults()` fetched from hub API, but hub already cleared positions by that point.
+**Fix Part A:** Changed `computeResults()` from async API fetch to synchronous, using local `positions` state via `setPositions()` functional update to access current state.
+**Fix Part B:** Added `results` prop to `MarketPanel`. When set and market is RESOLVED, shows compact results summary: outcome + W:count +total / L:count -total. Deleted `ResultsPanel.tsx`, removed from exports.
+**Files:** `simulator/src/App.tsx`, `simulator/src/components/MarketPanel.tsx`, `simulator/src/components/ResultsPanel.tsx` (DELETED), `simulator/src/components/index.ts`
+
+### Feature 1: Positions accordion expansion with session data
+**Hub changes:**
+- `db/schema.ts` + `db/connection.ts`: Added `session_data TEXT` column to positions table
+- `modules/position/types.ts`: Added `sessionData?: string` to Position interface
+- `modules/position/tracker.ts`: Added `updateSessionData(appSessionId, data)` method; `toPosition()` maps sessionData
+- `api/bet.routes.ts`: After V2 submitAppState success, stores sessionData via `updateSessionData()` and includes in `SESSION_VERSION_UPDATED` broadcast
+- `api/oracle.routes.ts`: After V3 submitAppState (losers) and closeSession (winners), stores sessionData via `updateSessionData()` and includes in `SESSION_VERSION_UPDATED` broadcast
+- `api/types.ts`: Added `sessionData?: string` to `WsSessionVersionUpdated`
+
+**Simulator changes:**
+- `types.ts`: Added `sessionData?: string` to Position and WsSessionVersionUpdated
+- `App.tsx`: Added `positionsSelectedIndex` and `positionsExpandedIndex` state. In positions panel: j/k moves cursor (with auto-scroll), Enter/e toggles expansion. SESSION_VERSION_UPDATED handler now stores sessionData.
+- `components/PositionsPanel.tsx`: Full rewrite with:
+  - `selectedIndex`/`expandedIndex` props
+  - Selection indicator (`>`) and inverse highlighting on selected row
+  - `SessionDataExpanded` component that parses JSON sessionData:
+    - V2: market, outcome, amount, shares, price/share, fee, pre/post-bet odds
+    - V3: resolution, result, payout, profit, shares, costPaid
+    - Generic fallback for other versions
+
+### Feature 2: Markets overlay panel (`:markets` command)
+**Hub changes:**
+- `modules/market/manager.ts`: Added `getAllMarkets()` method
+- `api/market.routes.ts`: Added `GET /api/markets` endpoint returning all markets
+
+**Simulator changes:**
+- `types.ts`: Added `MarketSummary` type
+- `core/hub-client.ts`: Added `getMarkets()` and `getMarket(marketId)` methods
+- `components/MarketsOverlay.tsx`: NEW — Scrollable market list with j/k navigation, Enter to load, Escape to dismiss. Shows ID, Game, Category, Status, Outcome columns.
+- `components/index.ts`: Added MarketsOverlay export
+- `components/HelpOverlay.tsx`: Added `:markets` command + `Enter/e` key hint
+- `App.tsx`: Added `UIMode = 'markets'`, `marketsList`/`marketsSelectedIndex` state. `:markets` command fetches market list and enters overlay mode. In markets mode: j/k scrolls, Enter loads market data (fetches market + positions, updates all state), Escape dismisses.
+
+### Files Summary
+| File | Action |
+|---|---|
+| `simulator/src/components/HelpOverlay.tsx` | Fix alignment, add `:markets` + `Enter/e` |
+| `simulator/src/components/MarketPanel.tsx` | Add results display prop |
+| `simulator/src/components/ResultsPanel.tsx` | DELETED |
+| `simulator/src/components/PositionsPanel.tsx` | Rewrite with accordion + cursor |
+| `simulator/src/components/MarketsOverlay.tsx` | NEW |
+| `simulator/src/components/index.ts` | Update exports |
+| `simulator/src/App.tsx` | Layout restructure, balance refresh, local results, markets mode, accordion |
+| `simulator/src/types.ts` | Add sessionData, MarketSummary, sessionData on WsSessionVersionUpdated |
+| `simulator/src/core/hub-client.ts` | Add getMarkets, getMarket |
+| `hub/src/db/schema.ts` | Add sessionData column |
+| `hub/src/db/connection.ts` | Add session_data to CREATE TABLE SQL |
+| `hub/src/modules/position/types.ts` | Add sessionData field |
+| `hub/src/modules/position/tracker.ts` | Add updateSessionData method |
+| `hub/src/api/bet.routes.ts` | Store V2 sessionData, include in broadcast |
+| `hub/src/api/oracle.routes.ts` | Store V3 sessionData, include in broadcast |
+| `hub/src/api/types.ts` | Add sessionData to WsSessionVersionUpdated |
+| `hub/src/api/market.routes.ts` | Add GET /api/markets |
+| `hub/src/modules/market/manager.ts` | Add getAllMarkets() |
+
+### Test Results
+- **Hub:** 26 suites, 380 passed (6 skipped — pre-existing Clearnode session tests)
+- **Simulator:** 5 suites, 133 passed
+- **TypeScript:** Zero compilation errors (both hub and simulator)
+- **Total:** 513 passing tests
 
 ---
 

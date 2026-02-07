@@ -188,10 +188,12 @@ export function registerOracleRoutes(app: FastifyInstance, ctx: AppContext): voi
         });
         ctx.log.resolutionStateUpdate(loser.address, loser.appSessionId, version);
         ctx.positionTracker.updateAppSessionVersion(loser.appSessionId, version);
+        ctx.positionTracker.updateSessionData(loser.appSessionId, v3SessionData);
         ctx.ws.broadcast({
           type: 'SESSION_VERSION_UPDATED',
           appSessionId: loser.appSessionId,
           version,
+          sessionData: v3SessionData,
         });
 
         // Close the session
@@ -258,6 +260,7 @@ export function registerOracleRoutes(app: FastifyInstance, ctx: AppContext): voi
           ],
           sessionData: v3SessionData,
         });
+        ctx.positionTracker.updateSessionData(winner.appSessionId, v3SessionData);
         ctx.log.resolutionSessionClosed(winner.address, winner.appSessionId);
       } catch (err) {
         ctx.log.error(`resolution-winner-closeSession-${winner.address}`, err);

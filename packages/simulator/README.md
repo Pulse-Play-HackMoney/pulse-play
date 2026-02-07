@@ -1,6 +1,6 @@
 # PulsePlay Simulator
 
-Terminal-based betting simulator for PulsePlay demos. Generates wallets, funds them, controls the oracle, runs automated betting simulations, and displays everything in a fullscreen terminal UI — all while the audience watches the frontend react in real time.
+Terminal-based betting simulator and developer dashboard for PulsePlay demos. Generates wallets, funds them, controls the oracle, runs automated betting simulations, and displays everything in a fullscreen terminal UI — including real-time app session tracking and system health indicators. This is the unified tool that replaces both the old simulator and dashboard packages.
 
 ## Why This Exists
 
@@ -69,14 +69,18 @@ pnpm test:watch
 | `:reset` | Full reset: stop sim, clear wallets, reset backend |
 | `:clear` / `:c` | Clear event log |
 | `:reconnect` | Reconnect WebSocket |
+| `:games` | List all games in event log |
+| `:sports` | List all sports + categories in event log |
+| `:markets` | Browse all markets (overlay) |
 | `:quit` / `:q` | Quit simulator |
 
 ### Navigation
 
 | Key | Action |
 |---|---|
-| `Tab` | Switch active panel (Wallets / Event Log) |
+| `Tab` | Cycle active panel (Wallets → Positions → Event Log) |
 | `j` / `k` | Scroll active panel down / up |
+| `Enter` / `e` | Expand / collapse position detail |
 | `g` / `G` | Scroll to top / bottom |
 | `?` | Toggle help overlay |
 | `:` | Enter command mode |
@@ -105,6 +109,16 @@ pnpm test:watch
 | `delayMaxMs` | `4000` | Maximum delay between bets (ms) |
 | `maxBetsPerWallet` | `3` | Max bets per wallet per simulation |
 
+### Usage Examples
+
+```bash
+:sim config                          # view current config
+:sim config maxBetsPerWallet=5       # update one value
+:sim config outcomeBias=0.7 betAmountMax=10  # update multiple
+```
+
+> **Note:** Config is baked into wallet profiles at `:sim start` time. To apply changes mid-session: `:sim stop` → `:sim config key=val` → `:sim start`.
+
 ## Architecture
 
 ```
@@ -126,14 +140,20 @@ pnpm test:watch
 ```
 ┌─ Header ─────────────────────────────────────────────────────┐
 ├──────────────────────────────────┬───────────────────────────┤
-│ WalletTable (60%)                │ MarketPanel (40%)         │
-│ #  Address    Balance  Side Bets │ + ResultsPanel (resolved) │
-│ 1  0x1234..5678 $50.00 BALL 1/3 │ + EventLog                │
-│ 2  0x2345..6789 $50.00 STRK 0/3 │                           │
+│ WalletTable / PositionsPanel     │ SystemInfo                │
+│ (55%, Tab to switch)             │ MarketPanel               │
+│                                  │ ResultsPanel              │
 ├──────────────────────────────────┴───────────────────────────┤
+│ EventLog (full width)                                         │
+├──────────────────────────────────────────────────────────────┤
 │ CommandBar                                                    │
 └──────────────────────────────────────────────────────────────┘
 ```
+
+**Panels (Tab to cycle):**
+- **Wallets** — Generated wallet addresses, balances, betting profiles
+- **Positions** — App sessions with session ID, bettor, outcome, allocation, version, status
+- **Event Log** — Real-time WebSocket events and simulation activity
 
 ### Core Modules
 

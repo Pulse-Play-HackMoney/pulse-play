@@ -96,6 +96,7 @@ function pushSchema(db: DrizzleDB): void {
     app_session_id TEXT NOT NULL,
     app_session_version INTEGER NOT NULL,
     session_status TEXT NOT NULL DEFAULT 'open',
+    session_data TEXT,
     created_at INTEGER NOT NULL
   )`);
 
