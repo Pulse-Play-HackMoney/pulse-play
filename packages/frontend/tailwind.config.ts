@@ -23,14 +23,14 @@ const config: Config = {
           emphasis: '#8B949E',
         },
         accent: {
-          DEFAULT: '#10B981',
-          hover: '#059669',
+          DEFAULT: '#0FA97E',
+          hover: '#0B8C68',
           muted: 'rgba(16,185,129,0.15)',
         },
         text: {
           primary: '#E6EDF3',
-          secondary: '#8B949E',
-          muted: '#484F58',
+          secondary: '#9DA5AE',
+          muted: '#6E7681',
         },
       },
       fontSize: {
