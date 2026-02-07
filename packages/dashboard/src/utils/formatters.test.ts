@@ -13,6 +13,7 @@ import {
   formatDollars,
   formatShares,
   renderPriceBar,
+  calculatePrices,
 } from './formatters.js';
 import type { WsMessage } from '../types.js';
 
@@ -82,16 +83,26 @@ describe('formatTime', () => {
 });
 
 describe('formatWsMessage', () => {
-  it('formats ODDS_UPDATE messages', () => {
+  it('formats ODDS_UPDATE messages with N outcomes', () => {
     const msg: WsMessage = {
       type: 'ODDS_UPDATE',
-      priceBall: 0.45,
-      priceStrike: 0.55,
-      qBall: 5,
-      qStrike: 8,
+      prices: [0.45, 0.55],
+      quantities: [5, 8],
+      outcomes: ['BALL', 'STRIKE'],
       marketId: 'market-1',
     };
-    expect(formatWsMessage(msg)).toBe('Ball: 45.0%, Strike: 55.0%');
+    expect(formatWsMessage(msg)).toBe('BALL: 45.0%, STRIKE: 55.0%');
+  });
+
+  it('formats ODDS_UPDATE with 3 outcomes', () => {
+    const msg: WsMessage = {
+      type: 'ODDS_UPDATE',
+      prices: [0.3, 0.5, 0.2],
+      quantities: [10, 15, 5],
+      outcomes: ['WIN', 'DRAW', 'LOSS'],
+      marketId: 'market-2',
+    };
+    expect(formatWsMessage(msg)).toBe('WIN: 30.0%, DRAW: 50.0%, LOSS: 20.0%');
   });
 
   it('formats MARKET_STATUS messages', () => {
@@ -192,6 +203,8 @@ describe('formatWsMessage', () => {
       type: 'STATE_SYNC',
       state: {
         market: null,
+        prices: [0.5, 0.5],
+        outcomes: ['BALL', 'STRIKE'],
         gameState: { active: false },
         positionCount: 0,
         connectionCount: 1,
@@ -259,6 +272,12 @@ describe('getOutcomeColor', () => {
 
   it('returns magenta for STRIKE', () => {
     expect(getOutcomeColor('STRIKE')).toBe('magenta');
+  });
+
+  it('cycles colors by index', () => {
+    expect(getOutcomeColor('UNKNOWN', 0)).toBe('cyan');
+    expect(getOutcomeColor('UNKNOWN', 1)).toBe('magenta');
+    expect(getOutcomeColor('UNKNOWN', 2)).toBe('yellow');
   });
 });
 
@@ -350,5 +369,41 @@ describe('renderPriceBar', () => {
 
   it('handles width of 0', () => {
     expect(renderPriceBar(0.5, 0)).toEqual({ filled: 0, empty: 0 });
+  });
+});
+
+describe('calculatePrices', () => {
+  it('returns empty array for empty quantities', () => {
+    expect(calculatePrices([], 100)).toEqual([]);
+  });
+
+  it('returns equal prices for equal quantities', () => {
+    const prices = calculatePrices([0, 0], 100);
+    expect(prices).toHaveLength(2);
+    expect(prices[0]).toBeCloseTo(0.5);
+    expect(prices[1]).toBeCloseTo(0.5);
+  });
+
+  it('returns equal prices for 3 equal quantities', () => {
+    const prices = calculatePrices([0, 0, 0], 100);
+    expect(prices).toHaveLength(3);
+    prices.forEach((p) => expect(p).toBeCloseTo(1 / 3));
+  });
+
+  it('prices sum to 1', () => {
+    const prices = calculatePrices([10, 20, 5], 50);
+    const sum = prices.reduce((a, v) => a + v, 0);
+    expect(sum).toBeCloseTo(1);
+  });
+
+  it('higher quantity yields higher price', () => {
+    const prices = calculatePrices([10, 20], 100);
+    expect(prices[1]).toBeGreaterThan(prices[0]);
+  });
+
+  it('handles large quantities without overflow (log-sum-exp trick)', () => {
+    const prices = calculatePrices([1000, 1000], 1);
+    expect(prices[0]).toBeCloseTo(0.5);
+    expect(prices[1]).toBeCloseTo(0.5);
   });
 });

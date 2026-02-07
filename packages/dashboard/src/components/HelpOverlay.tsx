@@ -16,6 +16,8 @@ export function HelpOverlay({ height }: HelpOverlayProps) {
     { header: 'Commands' },
     { key: ':clear', desc: 'Clear event log' },
     { key: ':reset', desc: 'Reset backend state' },
+    { key: ':games', desc: 'List games from hub' },
+    { key: ':sports', desc: 'List sports & categories' },
     { key: ':reconnect', desc: 'Reconnect WebSocket' },
     { key: ':quit / :q', desc: 'Quit dashboard' },
     { header: 'General' },

@@ -1,5 +1,8 @@
 import type { WsMessage, Outcome, MarketStatus, SessionStatus } from '../types.js';
 
+// Color cycle for N outcomes
+const OUTCOME_COLORS = ['cyan', 'magenta', 'yellow', 'green', 'blue', 'red'];
+
 /**
  * Formats a probability (0-1) as a percentage string
  */
@@ -49,8 +52,10 @@ export function formatTime(date: Date): string {
  */
 export function formatWsMessage(msg: WsMessage): string {
   switch (msg.type) {
-    case 'ODDS_UPDATE':
-      return `Ball: ${formatOdds(msg.priceBall)}, Strike: ${formatOdds(msg.priceStrike)}`;
+    case 'ODDS_UPDATE': {
+      const parts = msg.outcomes.map((o, i) => `${o}: ${formatOdds(msg.prices[i])}`);
+      return parts.join(', ');
+    }
     case 'MARKET_STATUS':
       return msg.outcome
         ? `${msg.status} (${msg.outcome})`
@@ -127,11 +132,19 @@ export function getStatusColor(status: MarketStatus): string {
 }
 
 /**
- * Returns a color for outcome
+ * Returns a color for outcome using a cycle array.
+ * Known outcomes get stable colors; others cycle by index.
  */
-export function getOutcomeColor(outcome: Outcome): string {
-  const outcomeA = ['BALL', 'MAKE', 'GOAL', 'HIT'];
-  return outcomeA.includes(outcome) ? 'cyan' : 'magenta';
+export function getOutcomeColor(outcome: Outcome, index?: number): string {
+  if (index !== undefined) {
+    return OUTCOME_COLORS[index % OUTCOME_COLORS.length];
+  }
+  // Known outcome shortcuts
+  const known: Record<string, string> = {
+    BALL: 'cyan', MAKE: 'cyan', GOAL: 'cyan', HIT: 'cyan',
+    STRIKE: 'magenta', MISS: 'magenta', NO_GOAL: 'magenta', OUT: 'magenta',
+  };
+  return known[outcome] ?? 'cyan';
 }
 
 /**
@@ -160,13 +173,24 @@ export function formatShares(shares: number): string {
  * Formats state channel version compactly
  */
 export function formatVersion(version: number): string {
-  return `${version}`;
+  return `v${version}`;
 }
 
 /**
  * Computes the number of filled and empty characters for an ASCII price bar.
  * Pure function — rendering logic stays testable without React.
  */
+/**
+ * Calculate N-outcome prices from market quantities using LMSR softmax (log-sum-exp trick).
+ */
+export function calculatePrices(quantities: number[], b: number): number[] {
+  if (quantities.length === 0) return [];
+  const maxQ = Math.max(...quantities);
+  const exps = quantities.map((q) => Math.exp((q - maxQ) / b));
+  const sumExp = exps.reduce((a, v) => a + v, 0);
+  return exps.map((e) => e / sumExp);
+}
+
 export function renderPriceBar(probability: number, width: number): { filled: number; empty: number } {
   const clamped = Math.max(0, Math.min(1, probability));
   const filled = Math.round(clamped * width);

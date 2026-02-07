@@ -91,6 +91,20 @@ export function SystemInfo({
         )}
       </Box>
 
+      {/* Game / Category context */}
+      {state?.market?.gameId && (
+        <Box gap={1}>
+          <Text>Game ID:</Text>
+          <Text color="white">{state.market.gameId}</Text>
+        </Box>
+      )}
+      {state?.market?.categoryId && (
+        <Box gap={1}>
+          <Text>Category:</Text>
+          <Text color="white">{state.market.categoryId}</Text>
+        </Box>
+      )}
+
       {/* Position count */}
       <Box gap={1}>
         <Text>Positions:</Text>

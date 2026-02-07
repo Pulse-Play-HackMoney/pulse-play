@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
+import type { AdminStateResponse } from '../types.js';
 
 export type CommandBarMode = 'normal' | 'command';
 
@@ -8,9 +9,10 @@ interface CommandBarProps {
   commandBuffer: string;
   statusMessage: string | null;
   wsUrl: string;
+  state?: AdminStateResponse | null;
 }
 
-export function CommandBar({ mode, commandBuffer, statusMessage, wsUrl }: CommandBarProps) {
+export function CommandBar({ mode, commandBuffer, statusMessage, wsUrl, state }: CommandBarProps) {
   if (mode === 'command') {
     return (
       <Box paddingX={1}>
@@ -44,7 +46,11 @@ export function CommandBar({ mode, commandBuffer, statusMessage, wsUrl }: Comman
         <Text color="gray">q</Text>
         <Text dimColor>quit</Text>
       </Box>
-      <Text color="gray" dimColor>WS: {wsUrl}</Text>
+      <Box gap={1}>
+        {state?.market?.gameId && <Text color="gray" dimColor>{state.market.gameId}</Text>}
+        {state?.market?.categoryId && <Text color="gray" dimColor>{state.market.categoryId}</Text>}
+        <Text color="gray" dimColor>WS: {wsUrl}</Text>
+      </Box>
     </Box>
   );
 }

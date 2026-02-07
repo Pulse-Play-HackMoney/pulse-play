@@ -26,31 +26,15 @@ type ActivePanel = 'positions' | 'eventLog';
 
 const MAX_EVENT_LOG_SIZE = 100;
 
-// Calculate prices from market quantities
-function calculatePrices(market: { qBall: number; qStrike: number; b: number } | null) {
-  if (!market) {
-    return { priceBall: 0.5, priceStrike: 0.5 };
-  }
-
-  const { qBall, qStrike, b } = market;
-  const maxQ = Math.max(qBall, qStrike);
-  const expBall = Math.exp((qBall - maxQ) / b);
-  const expStrike = Math.exp((qStrike - maxQ) / b);
-  const sumExp = expBall + expStrike;
-
-  return {
-    priceBall: expBall / sumExp,
-    priceStrike: expStrike / sumExp,
-  };
-}
-
 export function App({ wsUrl, hubUrl }: AppProps) {
   const { exit } = useApp();
   const { columns, rows } = useTerminalSize();
 
   // Core state
   const [events, setEvents] = useState<EventLogEntry[]>([]);
-  const [prices, setPrices] = useState({ priceBall: 0.5, priceStrike: 0.5 });
+  const [prices, setPrices] = useState<number[]>([0.5, 0.5]);
+  const [outcomes, setOutcomes] = useState<string[]>(['BALL', 'STRIKE']);
+  const [quantities, setQuantities] = useState<number[]>([0, 0]);
   const [state, setState] = useState<AdminStateResponse | null>(null);
   const [positions, setPositions] = useState<Position[]>([]);
   const [initialized, setInitialized] = useState(false);
@@ -71,16 +55,10 @@ export function App({ wsUrl, hubUrl }: AppProps) {
   const { connected, messageQueue, queueVersion, error: wsError, reconnectAttempts, reconnect } = useWebSocket(wsUrl);
 
   // Layout calculations
-  // Header: 3 rows (border top + content + border bottom)
-  // Footer: 1 row
-  // Overhead = 3 (header) + 1 (footer) = 4
-  // MarketPanel: ~11 rows (border + title + status + 2 price bars + q values)
-  // SystemInfo: ~9 rows (border + title + 5 info lines)
-  // Scrollable panel overhead: ~3 rows (border top + title + border bottom)
   const positionsVisibleCount = Math.max(rows - 21, 1);
   const eventLogVisibleCount = Math.max(rows - 17, 1);
   const barWidth = Math.max(Math.floor(columns / 2) - 6, 10);
-  const leftPanelWidth = Math.max(Math.floor(columns / 2) - 4, 10); // 50% minus border + paddingX
+  const leftPanelWidth = Math.max(Math.floor(columns / 2) - 4, 10);
 
   // Show status message for 2 seconds
   const showStatus = useCallback((msg: string) => {
@@ -112,6 +90,49 @@ export function App({ wsUrl, hubUrl }: AppProps) {
       case 'reconnect':
         reconnect();
         showStatus('Reconnecting...');
+        break;
+      case 'games':
+        fetch(`${hubUrl}/api/games`)
+          .then((r) => r.json())
+          .then((data: any) => {
+            const games = data.games ?? data;
+            if (!Array.isArray(games) || games.length === 0) {
+              showStatus('No games found');
+              return;
+            }
+            const lines = games.map((g: any) => `${g.id} [${g.status}] ${g.sportId} — ${g.homeTeam} vs ${g.awayTeam}`);
+            showStatus(`${games.length} game(s)`);
+            for (const line of lines) {
+              setEvents((prev) => [...prev, {
+                timestamp: new Date(),
+                type: 'INFO',
+                message: line,
+                raw: { type: 'GAME_STATE', active: true } as any,
+              }]);
+            }
+          })
+          .catch((err) => showStatus(`Games fetch failed: ${err.message}`));
+        break;
+      case 'sports':
+        fetch(`${hubUrl}/api/sports`)
+          .then((r) => r.json())
+          .then((data: any) => {
+            const sports = data.sports ?? data;
+            if (!Array.isArray(sports) || sports.length === 0) {
+              showStatus('No sports found');
+              return;
+            }
+            showStatus(`${sports.length} sport(s)`);
+            for (const s of sports) {
+              setEvents((prev) => [...prev, {
+                timestamp: new Date(),
+                type: 'INFO',
+                message: `${s.id}: ${s.name} — ${(s.categories ?? []).map((c: any) => `${c.id}(${(c.outcomes ?? []).join('/')})`).join(', ')}`,
+                raw: { type: 'GAME_STATE', active: true } as any,
+              }]);
+            }
+          })
+          .catch((err) => showStatus(`Sports fetch failed: ${err.message}`));
         break;
       case 'quit':
       case 'q':
@@ -217,8 +238,14 @@ export function App({ wsUrl, hubUrl }: AppProps) {
         setState(msg.state);
         setPositions(msg.positions);
         setInitialized(true);
-        if (msg.state.market) {
-          setPrices(calculatePrices(msg.state.market));
+        if (msg.state.prices) {
+          setPrices(msg.state.prices);
+        }
+        if (msg.state.outcomes) {
+          setOutcomes(msg.state.outcomes);
+        }
+        if (msg.state.market?.quantities) {
+          setQuantities(msg.state.market.quantities);
         }
         break;
 
@@ -248,15 +275,17 @@ export function App({ wsUrl, hubUrl }: AppProps) {
           if (isNewMarket) {
             setPositions([]);
             setPositionsScrollOffset(0);
-            setPrices({ priceBall: 0.5, priceStrike: 0.5 });
+            const n = outcomes.length || 2;
+            setPrices(Array(n).fill(1 / n));
+            setQuantities(Array(n).fill(0));
             return {
               ...prev,
               market: {
                 id: msg.marketId,
                 status: msg.status,
                 outcome: msg.outcome ?? null,
-                qBall: 0,
-                qStrike: 0,
+                quantities: Array(n).fill(0),
+                outcomes: outcomes.length ? outcomes : ['BALL', 'STRIKE'],
                 b: 100,
               },
               positionCount: 0,
@@ -281,23 +310,20 @@ export function App({ wsUrl, hubUrl }: AppProps) {
         break;
 
       case 'ODDS_UPDATE':
-        setPrices({
-          priceBall: msg.priceBall,
-          priceStrike: msg.priceStrike,
+        setPrices(msg.prices);
+        setOutcomes(msg.outcomes);
+        setQuantities(msg.quantities);
+        setState((prev) => {
+          if (!prev?.market) return prev;
+          return {
+            ...prev,
+            market: {
+              ...prev.market,
+              quantities: msg.quantities,
+              outcomes: msg.outcomes,
+            },
+          };
         });
-        if (msg.qBall !== undefined && msg.qStrike !== undefined) {
-          setState((prev) => {
-            if (!prev?.market) return prev;
-            return {
-              ...prev,
-              market: {
-                ...prev.market,
-                qBall: msg.qBall,
-                qStrike: msg.qStrike,
-              },
-            };
-          });
-        }
         break;
 
       case 'SESSION_VERSION_UPDATED':
@@ -332,7 +358,7 @@ export function App({ wsUrl, hubUrl }: AppProps) {
       case 'BET_RESULT':
         break;
     }
-  }, []);
+  }, [outcomes]);
 
   // Handle incoming WebSocket messages — drain the queue to avoid dropping messages
   useEffect(() => {
@@ -390,7 +416,7 @@ export function App({ wsUrl, hubUrl }: AppProps) {
     uiMode === 'command' ? ' [COMMAND]' : '';
 
   return (
-    <Box flexDirection="column" height={rows - 2}>
+    <Box flexDirection="column" height={rows}>
       {/* Header */}
       <Box
         borderStyle="double"
@@ -415,8 +441,9 @@ export function App({ wsUrl, hubUrl }: AppProps) {
           <Box flexDirection="column" width="50%">
             <MarketPanel
               state={state}
-              priceBall={prices.priceBall}
-              priceStrike={prices.priceStrike}
+              prices={prices}
+              outcomes={outcomes}
+              quantities={quantities}
               barWidth={barWidth}
             />
             <PositionsPanel
@@ -455,6 +482,7 @@ export function App({ wsUrl, hubUrl }: AppProps) {
           commandBuffer={commandBuffer}
           statusMessage={statusMessage}
           wsUrl={wsUrl}
+          state={state}
         />
       </Box>
     </Box>

@@ -8,11 +8,15 @@ export type SessionStatus = 'open' | 'settling' | 'settled';
 
 export interface WsOddsUpdate {
   type: 'ODDS_UPDATE';
-  priceBall: number;
-  priceStrike: number;
-  qBall: number;
-  qStrike: number;
+  prices: number[];
+  quantities: number[];
+  outcomes: string[];
   marketId: string;
+  // Backward compat (hub still sends these for 2-outcome markets)
+  priceBall?: number;
+  priceStrike?: number;
+  qBall?: number;
+  qStrike?: number;
 }
 
 export interface WsMarketStatus {
@@ -83,10 +87,17 @@ export interface AdminStateResponse {
     id: string;
     status: MarketStatus;
     outcome: Outcome | null;
-    qBall: number;
-    qStrike: number;
+    quantities: number[];
+    outcomes: string[];
     b: number;
+    // Backward compat
+    qBall?: number;
+    qStrike?: number;
+    gameId?: string;
+    categoryId?: string;
   } | null;
+  prices: number[];
+  outcomes: string[];
   gameState: { active: boolean };
   positionCount: number;
   connectionCount: number;

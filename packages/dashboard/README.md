@@ -9,7 +9,7 @@ A fullscreen terminal-based real-time developer dashboard for observing the Puls
 - **Panel navigation** — Tab to switch active panel, j/k to scroll
 - **Vim-style command bar** — `:clear`, `:reset`, `:reconnect`, `:quit`
 - **Help overlay** — press `?` for keybinding reference
-- **Visual price bars** — ASCII progress bars for BALL/STRIKE odds
+- **Visual price bars** — ASCII progress bars for N-outcome odds (dynamic per category)
 - Real-time WebSocket event log with auto-scroll
 - Market state display with LMSR odds (decimal + American)
 - Position tracking with scrollable list
@@ -66,7 +66,7 @@ pnpm dev --help
 │ STRIKE  47.7% (+110)             │ └────────────────────────────────┘
 │ ██████████░░░░░░░░░░░░           │ ┌──────── EVENT LOG ─────────────┐
 │                                  │ │ 14:32:15 [GAME_STATE] ACTIVE   │
-│ qBall: 10.50, qStrike: -2.30    │ │ 14:32:18 [MARKET] OPEN         │
+│ Quantities: 10.50, -2.30        │ │ 14:32:18 [MARKET] OPEN         │
 └──────────────────────────────────┘ │ 14:32:22 [ODDS] Ball: 52.3%    │
 ┌────── POSITIONS (5) 1-3 of 5 ───┐ │ 14:32:25 [BET] WIN $12.50      │
 │ 0x1234.. BALL   12.50 $5.00     │ │ 14:32:30 [POSITION] 0x56..     │
@@ -96,6 +96,8 @@ Press `:` to enter command mode, type a command, then press Enter.
 |---------|-------------|
 | `:clear` / `:c` | Clear event log |
 | `:reset` / `:r` | Reset backend state (POST /api/admin/reset) |
+| `:games` | List games from the hub |
+| `:sports` | List sports and categories |
 | `:reconnect` | Reconnect WebSocket |
 | `:quit` / `:q` | Quit dashboard |
 
