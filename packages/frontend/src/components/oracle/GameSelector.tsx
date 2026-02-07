@@ -69,12 +69,12 @@ export function GameSelector({ className = '', selected, onSelect }: GameSelecto
   };
 
   return (
-    <div className={`bg-gray-800 rounded-lg p-6 ${className}`} data-testid="game-selector">
+    <div className={`bg-surface-raised border border-border rounded-lg p-6 ${className}`} data-testid="game-selector">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-white">Select Game</h2>
+        <h2 className="text-sm font-mono uppercase tracking-wider text-text-secondary">Select Game</h2>
         <button
           onClick={() => setShowCreate(!showCreate)}
-          className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+          className="text-sm text-accent hover:text-accent-hover transition-colors"
           data-testid="toggle-create-form"
         >
           {showCreate ? 'Cancel' : '+ New Game'}
@@ -82,11 +82,11 @@ export function GameSelector({ className = '', selected, onSelect }: GameSelecto
       </div>
 
       {showCreate && (
-        <div className="mb-4 p-4 bg-gray-900 rounded-lg space-y-3" data-testid="create-game-form">
+        <div className="mb-4 p-4 bg-surface-overlay rounded-lg space-y-3" data-testid="create-game-form">
           <select
             value={newSportId}
             onChange={(e) => setNewSportId(e.target.value)}
-            className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm"
+            className="w-full bg-surface-input text-text-primary rounded-lg px-3 py-2 text-sm"
             data-testid="create-game-sport"
           >
             {sports.map((s) => (
@@ -100,7 +100,7 @@ export function GameSelector({ className = '', selected, onSelect }: GameSelecto
             placeholder="Home Team"
             value={newHomeTeam}
             onChange={(e) => setNewHomeTeam(e.target.value)}
-            className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm placeholder-gray-500"
+            className="w-full bg-surface-input text-text-primary rounded-lg px-3 py-2 text-sm placeholder-text-muted"
             data-testid="create-game-home"
           />
           <input
@@ -108,7 +108,7 @@ export function GameSelector({ className = '', selected, onSelect }: GameSelecto
             placeholder="Away Team"
             value={newAwayTeam}
             onChange={(e) => setNewAwayTeam(e.target.value)}
-            className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm placeholder-gray-500"
+            className="w-full bg-surface-input text-text-primary rounded-lg px-3 py-2 text-sm placeholder-text-muted"
             data-testid="create-game-away"
           />
           {createError && (
@@ -129,10 +129,10 @@ export function GameSelector({ className = '', selected, onSelect }: GameSelecto
 
       {isLoading ? (
         <div className="animate-pulse space-y-2" data-testid="game-selector-loading">
-          <div className="h-10 bg-gray-700 rounded" />
+          <div className="h-10 bg-surface-input rounded" />
         </div>
       ) : games.length === 0 ? (
-        <p className="text-gray-500 text-sm" data-testid="game-selector-empty">
+        <p className="text-text-muted text-sm" data-testid="game-selector-empty">
           No games yet. Create one above.
         </p>
       ) : (
@@ -144,7 +144,7 @@ export function GameSelector({ className = '', selected, onSelect }: GameSelecto
               className={`w-full text-left px-4 py-3 rounded-lg text-sm transition-colors ${
                 selected?.id === game.id
                   ? 'bg-blue-600/20 border border-blue-500/30 text-white'
-                  : 'bg-gray-900 text-gray-400 hover:text-white hover:bg-gray-700'
+                  : 'bg-surface-overlay text-text-secondary hover:text-text-primary hover:bg-surface-input'
               }`}
               data-testid={`game-option-${game.id}`}
             >
@@ -164,7 +164,7 @@ export function GameSelector({ className = '', selected, onSelect }: GameSelecto
                   {game.status}
                 </span>
               </div>
-              <div className="text-xs text-gray-500 mt-1 capitalize">{game.sportId}</div>
+              <div className="text-xs text-text-muted mt-1 capitalize">{game.sportId}</div>
             </button>
           ))}
         </div>

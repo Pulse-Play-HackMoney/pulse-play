@@ -32,8 +32,8 @@ export function SportsPanel() {
   if (isLoading) {
     return (
       <div className="animate-pulse space-y-3" data-testid="sports-panel-loading">
-        <div className="h-12 bg-gray-700 rounded" />
-        <div className="h-12 bg-gray-700 rounded" />
+        <div className="h-12 bg-surface-input rounded" />
+        <div className="h-12 bg-surface-input rounded" />
       </div>
     );
   }
@@ -42,30 +42,30 @@ export function SportsPanel() {
     <div data-testid="sports-panel">
       <div className="space-y-2">
         {sports.map((sport) => (
-          <div key={sport.id} className="bg-gray-800 rounded-lg overflow-hidden">
+          <div key={sport.id} className="bg-surface-raised border border-border rounded-lg overflow-hidden">
             <button
               onClick={() =>
                 setExpandedSport(expandedSport === sport.id ? null : sport.id)
               }
-              className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-750 transition-colors"
+              className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-surface-overlay transition-colors"
               data-testid={`sport-row-${sport.id}`}
             >
               <div>
-                <span className="text-white font-medium">{sport.name}</span>
+                <span className="text-text-primary font-medium">{sport.name}</span>
                 {sport.description && (
-                  <span className="text-gray-500 text-sm ml-2">{sport.description}</span>
+                  <span className="text-text-muted text-sm ml-2">{sport.description}</span>
                 )}
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-gray-500 text-sm">
+                <span className="text-text-muted text-sm">
                   {categories[sport.id]?.length ?? 0} categories
                 </span>
-                <span className="text-gray-500">{expandedSport === sport.id ? '−' : '+'}</span>
+                <span className="text-text-muted">{expandedSport === sport.id ? '−' : '+'}</span>
               </div>
             </button>
 
             {expandedSport === sport.id && (
-              <div className="px-4 pb-3 border-t border-gray-700" data-testid={`sport-categories-${sport.id}`}>
+              <div className="px-4 pb-3 border-t border-border" data-testid={`sport-categories-${sport.id}`}>
                 {(categories[sport.id] ?? []).map((cat) => (
                   <div
                     key={cat.id}
@@ -73,16 +73,16 @@ export function SportsPanel() {
                     data-testid={`category-row-${cat.id}`}
                   >
                     <div>
-                      <span className="text-gray-300 capitalize">{cat.name}</span>
+                      <span className="text-text-secondary capitalize">{cat.name}</span>
                       {cat.description && (
-                        <span className="text-gray-600 ml-2">{cat.description}</span>
+                        <span className="text-text-muted ml-2">{cat.description}</span>
                       )}
                     </div>
                     <div className="flex gap-1">
                       {cat.outcomes.map((o) => (
                         <span
                           key={o}
-                          className="px-2 py-0.5 bg-gray-700 rounded text-xs text-gray-300"
+                          className="px-2 py-0.5 bg-surface-input rounded text-xs text-text-secondary"
                         >
                           {o}
                         </span>

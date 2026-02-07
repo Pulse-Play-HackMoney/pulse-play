@@ -16,7 +16,7 @@ export function WalletStatus({ className = '' }: WalletStatusProps) {
         <button
           onClick={connect}
           disabled={isConnecting}
-          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-2 text-sm font-medium text-white bg-accent rounded-lg hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           data-testid="connect-wallet-button"
         >
           {isConnecting ? 'Connecting...' : 'Connect Wallet'}
@@ -37,14 +37,14 @@ export function WalletStatus({ className = '' }: WalletStatusProps) {
   // Both modes: connected/configured - show address
   return (
     <div className={`flex items-center gap-2 ${className}`} data-testid="wallet-status">
-      <div className="w-2 h-2 rounded-full bg-green-500" />
-      <span className="text-sm font-mono text-gray-300" data-testid="wallet-address">
+      <div className="w-2 h-2 rounded-full bg-accent" />
+      <span className="text-sm font-mono text-text-secondary" data-testid="wallet-address">
         {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Unknown'}
       </span>
       {mode === 'metamask' && (
         <button
           onClick={disconnect}
-          className="ml-2 px-2 py-1 text-xs text-gray-400 hover:text-white border border-gray-600 rounded hover:border-gray-400"
+          className="ml-2 px-2 py-1 text-xs text-text-secondary hover:text-text-primary border border-border rounded hover:border-border-emphasis transition-colors"
           data-testid="disconnect-wallet-button"
         >
           Disconnect

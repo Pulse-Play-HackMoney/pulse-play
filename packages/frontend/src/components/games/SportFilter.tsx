@@ -34,9 +34,9 @@ export function SportFilter({ className = '', selected, onSelect }: SportFilterP
   if (isLoading) {
     return (
       <div className={`flex gap-2 ${className}`} data-testid="sport-filter-loading">
-        <div className="h-9 w-16 bg-gray-700 rounded-lg animate-pulse" />
-        <div className="h-9 w-20 bg-gray-700 rounded-lg animate-pulse" />
-        <div className="h-9 w-24 bg-gray-700 rounded-lg animate-pulse" />
+        <div className="h-9 w-16 bg-surface-input rounded-lg animate-pulse" />
+        <div className="h-9 w-20 bg-surface-input rounded-lg animate-pulse" />
+        <div className="h-9 w-24 bg-surface-input rounded-lg animate-pulse" />
       </div>
     );
   }
@@ -48,7 +48,7 @@ export function SportFilter({ className = '', selected, onSelect }: SportFilterP
         className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
           selected === null
             ? 'bg-white text-gray-900'
-            : 'bg-gray-800 text-gray-400 hover:text-white'
+            : 'bg-surface-raised border border-border text-text-secondary hover:text-text-primary'
         }`}
         data-testid="sport-filter-all"
       >
@@ -61,7 +61,7 @@ export function SportFilter({ className = '', selected, onSelect }: SportFilterP
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
             selected === sport.id
               ? 'bg-white text-gray-900'
-              : 'bg-gray-800 text-gray-400 hover:text-white'
+              : 'bg-surface-raised border border-border text-text-secondary hover:text-text-primary'
           }`}
           data-testid={`sport-filter-${sport.id}`}
         >

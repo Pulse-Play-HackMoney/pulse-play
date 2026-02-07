@@ -50,13 +50,13 @@ export function GameList({ className = '', sportId }: GameListProps) {
     return (
       <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 ${className}`} data-testid="game-list-loading">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="bg-gray-800 rounded-lg p-5 animate-pulse">
+          <div key={i} className="bg-surface-raised border border-border rounded-lg p-5 animate-pulse">
             <div className="flex justify-between mb-3">
-              <div className="h-5 w-16 bg-gray-700 rounded" />
-              <div className="h-5 w-14 bg-gray-700 rounded" />
+              <div className="h-5 w-16 bg-surface-input rounded" />
+              <div className="h-5 w-14 bg-surface-input rounded" />
             </div>
-            <div className="h-6 w-3/4 bg-gray-700 rounded mb-2" />
-            <div className="h-4 w-1/2 bg-gray-700 rounded" />
+            <div className="h-6 w-3/4 bg-surface-input rounded mb-2" />
+            <div className="h-4 w-1/2 bg-surface-input rounded" />
           </div>
         ))}
       </div>
@@ -76,10 +76,10 @@ export function GameList({ className = '', sportId }: GameListProps) {
   if (games.length === 0) {
     return (
       <div className={className} data-testid="game-list-empty">
-        <div className="bg-gray-800 rounded-lg p-8 text-center">
-          <p className="text-gray-400 text-lg">No active games</p>
-          <p className="text-gray-500 text-sm mt-2">
-            Visit the <a href="/oracle" className="text-blue-400 hover:underline">Oracle page</a> to create one.
+        <div className="bg-surface-raised border border-border rounded-lg p-8 text-center">
+          <p className="text-text-secondary text-lg">No active games</p>
+          <p className="text-text-muted text-sm mt-2">
+            Visit the <a href="/oracle" className="text-accent hover:underline">Oracle page</a> to create one.
           </p>
         </div>
       </div>

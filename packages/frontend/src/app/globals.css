@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 :root {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  --background: #0D1117;
+  --foreground: #E6EDF3;
 }
 
 body {
@@ -15,6 +15,32 @@ body {
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-surface-raised border border-border rounded-lg p-6;
+  }
+
+  .card-header {
+    @apply text-sm font-mono uppercase tracking-wider text-text-secondary mb-4;
+  }
+
+  .label {
+    @apply text-xs font-mono uppercase tracking-wider text-text-muted;
+  }
+
+  .input-field {
+    @apply w-full bg-surface-input border border-border rounded-lg px-4 py-2 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent;
+  }
+
+  .btn-primary {
+    @apply bg-accent hover:bg-accent-hover text-white font-medium py-3 rounded-lg transition-colors disabled:bg-surface-input disabled:text-text-muted disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply bg-surface-input hover:bg-surface-overlay text-text-secondary hover:text-text-primary font-medium py-2 rounded-lg transition-colors;
   }
 }
 
@@ -31,4 +57,32 @@ body {
 
 .animate-slide-in {
   animation: slide-in 0.3s ease-out;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0D1117;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #30363D;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #484F58;
 }

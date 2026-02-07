@@ -55,9 +55,9 @@ export function SessionCard({ className = '' }: SessionCardProps) {
   const isLoading = status === 'connecting' || status === 'authenticating';
 
   return (
-    <div className={`bg-gray-800 rounded-lg p-6 ${className}`} data-testid="session-card">
+    <div className={`bg-surface-raised border border-border rounded-lg p-6 ${className}`} data-testid="session-card">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-white">Session</h2>
+        <h2 className="text-sm font-mono uppercase tracking-wider text-text-secondary">Session</h2>
         <span
           className={`px-3 py-1 rounded text-sm font-medium ${badge.color}`}
           data-testid="session-status-badge"
@@ -70,9 +70,9 @@ export function SessionCard({ className = '' }: SessionCardProps) {
         {/* Expiry */}
         {expiresAt > 0 && (
           <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-400">Session Expiry</span>
+            <span className="text-text-secondary">Session Expiry</span>
             <span
-              className={isSessionValid ? 'text-white' : 'text-orange-400'}
+              className={isSessionValid ? 'text-text-primary' : 'text-orange-400'}
               data-testid="session-expiry"
             >
               {formatTimeRemaining(expiresAt)}
@@ -92,7 +92,7 @@ export function SessionCard({ className = '' }: SessionCardProps) {
 
         {/* Allowance input */}
         <div>
-          <label className="block text-sm text-gray-400 mb-2">
+          <label className="block text-xs font-mono uppercase tracking-wider text-text-muted mb-2">
             Allowance ($ USD)
           </label>
           <input
@@ -104,10 +104,10 @@ export function SessionCard({ className = '' }: SessionCardProps) {
             }}
             min={0}
             step={100}
-            className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+            className="w-full bg-surface-input border border-border rounded-lg px-4 py-2 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
             data-testid="allowance-input"
           />
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-text-muted mt-1">
             Changing allowance requires re-authentication
           </p>
         </div>
@@ -116,7 +116,7 @@ export function SessionCard({ className = '' }: SessionCardProps) {
         <button
           onClick={() => reconnect()}
           disabled={isLoading}
-          className="w-full py-3 rounded-lg font-medium bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
+          className="w-full py-3 rounded-lg font-medium bg-accent hover:bg-accent-hover text-white disabled:bg-surface-input disabled:text-text-muted disabled:cursor-not-allowed transition-colors"
           data-testid="session-reconnect"
         >
           {isLoading ? 'Authenticating...' : 'Re-authenticate'}

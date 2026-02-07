@@ -17,15 +17,15 @@ export default function AdminPage() {
   return (
     <div className="space-y-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
-        <p className="text-gray-400 mt-2">
+        <h1 className="text-2xl font-bold font-mono uppercase tracking-wide text-text-primary">Admin Dashboard</h1>
+        <p className="text-text-secondary mt-2">
           Manage sports, games, markets, and users
         </p>
       </div>
 
       <AdminTabs selected={tab} onSelect={setTab} />
 
-      <div className="bg-gray-800 rounded-lg p-6">
+      <div className="bg-surface-raised border border-border rounded-lg p-6">
         {tab === 'sports' && <SportsPanel />}
         {tab === 'games' && <GamesPanel />}
         {tab === 'markets' && <MarketsPanel />}

@@ -55,8 +55,8 @@ export function BetResultToast({ duration = 5000 }: BetResultToastProps) {
           key={toast.id}
           className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg animate-slide-in ${
             toast.result === 'WIN'
-              ? 'bg-green-500/90 text-white'
-              : 'bg-red-500/90 text-white'
+              ? 'bg-green-500/90 text-white border border-green-400/30'
+              : 'bg-red-500/90 text-white border border-red-400/30'
           }`}
           data-testid={`toast-${toast.result.toLowerCase()}`}
         >

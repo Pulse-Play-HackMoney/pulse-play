@@ -67,14 +67,14 @@ export function MMFeeCard({ className = '' }: MMFeeCardProps) {
   };
 
   return (
-    <div className={`bg-gray-800 rounded-lg p-6 ${className}`} data-testid="mm-fee-card">
-      <h2 className="text-lg font-semibold text-white mb-1">Transaction Fee</h2>
-      <p className="text-sm text-gray-400 mb-4">
+    <div className={`bg-surface-raised border border-border rounded-lg p-6 ${className}`} data-testid="mm-fee-card">
+      <h2 className="text-sm font-mono uppercase tracking-wider text-text-secondary mb-1">Transaction Fee</h2>
+      <p className="text-sm text-text-secondary mb-4">
         Current: <span data-testid="fee-current">{isFetching ? '...' : `${currentFee}%`}</span>
       </p>
 
       <div className="mb-4">
-        <label className="block text-sm text-gray-400 mb-2">Fee Preset</label>
+        <label className="block text-xs font-mono uppercase tracking-wider text-text-muted mb-2">Fee Preset</label>
         <div className="grid grid-cols-4 gap-2">
           {PRESET_FEES.map((fee) => (
             <button
@@ -83,7 +83,7 @@ export function MMFeeCard({ className = '' }: MMFeeCardProps) {
               className={`py-2 rounded-lg text-sm font-medium transition-colors ${
                 selectedFee === fee
                   ? 'bg-blue-500/20 border border-blue-500 text-blue-400'
-                  : 'bg-gray-700 border border-gray-600 text-gray-300 hover:border-gray-500'
+                  : 'bg-surface-input border border-border text-text-secondary hover:border-border-emphasis'
               }`}
               data-testid={`fee-preset-${fee}`}
             >
@@ -94,7 +94,7 @@ export function MMFeeCard({ className = '' }: MMFeeCardProps) {
       </div>
 
       <div className="mb-4">
-        <label className="block text-sm text-gray-400 mb-2">Custom Fee (%)</label>
+        <label className="block text-xs font-mono uppercase tracking-wider text-text-muted mb-2">Custom Fee (%)</label>
         <input
           type="number"
           value={customFee}
@@ -103,7 +103,7 @@ export function MMFeeCard({ className = '' }: MMFeeCardProps) {
           step={0.1}
           min={0}
           max={100}
-          className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+          className="w-full bg-surface-input border border-border rounded-lg px-4 py-2 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
           data-testid="fee-custom-input"
         />
       </div>
@@ -123,7 +123,7 @@ export function MMFeeCard({ className = '' }: MMFeeCardProps) {
       <button
         onClick={handleSave}
         disabled={!isValidFee || !hasChanged || isLoading}
-        className="w-full py-3 rounded-lg font-medium bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
+        className="w-full py-3 rounded-lg font-medium bg-accent hover:bg-accent-hover text-white disabled:bg-surface-input disabled:text-text-muted disabled:cursor-not-allowed transition-colors"
         data-testid="fee-submit"
       >
         {isLoading ? 'Saving...' : 'Save Fee'}

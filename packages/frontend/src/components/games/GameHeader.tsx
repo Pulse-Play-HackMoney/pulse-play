@@ -21,7 +21,7 @@ export function GameHeader({ game, className = '' }: GameHeaderProps) {
     <div className={className} data-testid="game-header">
       <Link
         href="/"
-        className="text-sm text-gray-400 hover:text-white transition-colors mb-4 inline-block"
+        className="text-sm text-text-secondary hover:text-text-primary transition-colors mb-4 inline-block"
         data-testid="back-link"
       >
         &larr; Back to Games
@@ -29,7 +29,7 @@ export function GameHeader({ game, className = '' }: GameHeaderProps) {
 
       <div className="flex items-center gap-3 mb-2">
         <span
-          className="px-2 py-0.5 rounded text-xs font-medium capitalize bg-gray-700 text-gray-300"
+          className="px-2 py-0.5 rounded text-xs font-medium capitalize bg-surface-input text-text-secondary"
           data-testid="game-header-sport"
         >
           {game.sportId}
@@ -42,7 +42,7 @@ export function GameHeader({ game, className = '' }: GameHeaderProps) {
         </span>
       </div>
 
-      <h1 className="text-3xl font-bold text-white" data-testid="game-header-matchup">
+      <h1 className="text-2xl font-bold font-mono uppercase tracking-wide text-text-primary" data-testid="game-header-matchup">
         {game.homeTeam} vs {game.awayTeam}
       </h1>
     </div>

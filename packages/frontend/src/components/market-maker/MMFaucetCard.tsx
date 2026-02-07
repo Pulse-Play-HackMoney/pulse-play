@@ -65,11 +65,11 @@ export function MMFaucetCard({ className = '', onFunded }: MMFaucetCardProps) {
   };
 
   return (
-    <div className={`bg-gray-800 rounded-lg p-6 ${className}`} data-testid="mm-faucet-card">
-      <h2 className="text-lg font-semibold text-white mb-4">Fund Market Maker</h2>
+    <div className={`bg-surface-raised border border-border rounded-lg p-6 ${className}`} data-testid="mm-faucet-card">
+      <h2 className="text-sm font-mono uppercase tracking-wider text-text-secondary mb-4">Fund Market Maker</h2>
 
       <div className="mb-4">
-        <label className="block text-sm text-gray-400 mb-2">Select Amount (ytest.usdc)</label>
+        <label className="block text-xs font-mono uppercase tracking-wider text-text-muted mb-2">Select Amount (ytest.usdc)</label>
         <div className="grid grid-cols-4 gap-2">
           {PRESET_AMOUNTS.map((amount) => (
             <button
@@ -78,7 +78,7 @@ export function MMFaucetCard({ className = '', onFunded }: MMFaucetCardProps) {
               className={`py-2 rounded-lg text-sm font-medium transition-colors ${
                 selectedAmount === amount
                   ? 'bg-blue-500/20 border border-blue-500 text-blue-400'
-                  : 'bg-gray-700 border border-gray-600 text-gray-300 hover:border-gray-500'
+                  : 'bg-surface-input border border-border text-text-secondary hover:border-border-emphasis'
               }`}
               data-testid={`faucet-preset-${amount}`}
             >
@@ -89,7 +89,7 @@ export function MMFaucetCard({ className = '', onFunded }: MMFaucetCardProps) {
       </div>
 
       <div className="mb-4">
-        <label className="block text-sm text-gray-400 mb-2">Custom Amount (multiples of $10)</label>
+        <label className="block text-xs font-mono uppercase tracking-wider text-text-muted mb-2">Custom Amount (multiples of $10)</label>
         <input
           type="number"
           value={customAmount}
@@ -97,7 +97,7 @@ export function MMFaucetCard({ className = '', onFunded }: MMFaucetCardProps) {
           placeholder="e.g. 200"
           step={10}
           min={10}
-          className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+          className="w-full bg-surface-input border border-border rounded-lg px-4 py-2 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
           data-testid="faucet-custom-input"
         />
       </div>
@@ -132,7 +132,7 @@ export function MMFaucetCard({ className = '', onFunded }: MMFaucetCardProps) {
       <button
         onClick={handleFund}
         disabled={!isValidAmount || isLoading}
-        className="w-full py-3 rounded-lg font-medium bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
+        className="w-full py-3 rounded-lg font-medium bg-accent hover:bg-accent-hover text-white disabled:bg-surface-input disabled:text-text-muted disabled:cursor-not-allowed transition-colors"
         data-testid="faucet-submit"
       >
         {isLoading
