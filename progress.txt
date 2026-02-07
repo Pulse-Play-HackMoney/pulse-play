@@ -1919,3 +1919,92 @@ Date: 2026-02-07
 - Shares from LMSR use `netAmount` (fee reduces shares)
 - `costPaid` = full `amount` (what user put up)
 - Winner total return: `netAmount` (session close) + `profit` (transfer) = `payout - fee`
+
+
+---
+
+## Frontend UI Redesign (feature/ui-revamp)
+Date: 2026-02-07
+
+### What was done:
+Complete visual overhaul of the frontend from utilitarian gray to a polished prediction market aesthetic (Polymarket/Kalshi-inspired).
+
+**Implementation in git worktree** at `../pulse-play-ui-revamp` on branch `feature/ui-revamp`.
+
+**Phase 1: Design System Foundation**
+- `tailwind.config.ts` — Semantic color tokens: surface (4 shades), border (3), accent (3 green shades), text (3 levels), plus custom fontSize.label
+- `globals.css` — CSS vars updated, `@layer components` with `.card`, `.card-header`, `.label`, `.input-field`, `.btn-primary`, `.btn-secondary` utilities, pulse-dot animation, custom scrollbar
+
+**Phase 2: App Shell**
+- `LayoutInner.tsx` — `bg-surface`, `flex flex-col`, `max-w-7xl`, added Footer
+- `Header.tsx` — Full redesign: `bg-surface-overlay`, font-mono logo + "Beta" badge, pill-style nav, green accent WS status
+- `Footer.tsx` — **NEW** — Status bar with version, Yellow Network, year, connected/disconnected status with pulse-dot
+- `WalletStatus.tsx` — Green accent connect button, token-based text colors
+
+**Phase 3: Universal Card + Form Pattern Update (26 components)**
+- Card backgrounds: `bg-gray-800` → `bg-surface-raised border border-border`
+- Headers: `text-lg font-semibold text-white` → `text-sm font-mono uppercase tracking-wider text-text-secondary`
+- Labels: gray → `text-text-muted`, inputs → `bg-surface-input border-border focus:border-accent`
+- Buttons: blue → green accent, disabled → `disabled:bg-surface-input disabled:text-text-muted`
+- All OUTCOME_COLORS, SPORT_COLORS, STATUS_STYLES maps preserved (test-asserted)
+- All `bg-white` (selected state), `bg-gray-700` (AdminTabs selected), `border-blue-500` (BetForm) preserved
+
+**Phase 4: Page-Level Updates (6 pages)**
+- Titles → `text-2xl font-bold font-mono uppercase tracking-wide text-text-primary`
+- Subtitles → `text-text-secondary`
+- Home "Active Games" → "Markets"
+- Admin panel container → `bg-surface-raised border border-border`
+- Skeleton loaders → `bg-surface-input`
+
+**Phase 5: Polish**
+- BetResultToast — Added subtle borders (`border-green-400/30` / `border-red-400/30`)
+- `Footer.test.tsx` — **NEW** — 3 tests (renders info, connected status, disconnected status)
+
+### Test results:
+- **39 test suites passing, 322 tests total** (38 existing + 1 new Footer test)
+- Zero test failures — all test-asserted CSS classes preserved
+
+---
+
+## Contrast & Readability Fix (UI Revamp Branch)
+Date: 2026-02-07
+
+### What was done:
+Token-only fix in `tailwind.config.ts` to improve contrast ratios. No component files touched.
+
+| Token | Old | New | Effect |
+|-------|-----|-----|--------|
+| `text.muted` | `#484F58` | `#6E7681` | ~3.5:1 on raised (was ~2.1:1). Labels/timestamps now readable. |
+| `text.secondary` | `#8B949E` | `#9DA5AE` | ~7.0:1 on raised (was ~5.6:1). Card headers comfortably readable. |
+| `accent.DEFAULT` | `#10B981` | `#0FA97E` | Slightly desaturated/darker. Less jarring pop on near-black. |
+| `accent.hover` | `#059669` | `#0B8C68` | Proportional adjustment for visible hover feedback. |
+
+### Rationale:
+- Raised text floor (muted/secondary brighter) and lowered accent ceiling (green softer)
+- Compresses dynamic range for better visual synergy without making things bright
+- Token-based approach: 4 values changed propagate to all 26+ components automatically
+
+### Test results:
+- **39 test suites passing, 322 tests total** — zero regressions
+- No component files touched = zero risk of class-level test failures
+
+---
+
+## 2026-02-07: PositionsPanel V3 Layout + Scroll Fix (feature/dashboard-migration worktree)
+
+### Changes to `packages/simulator/src/components/PositionsPanel.tsx`:
+
+**1. V3 Session Data — one field per line**
+- Reformatted V3 Settlement Data section from multi-field-per-row to one-field-per-line
+- Each field (resolution, result, payout, profit, shares, costPaid) now gets its own `<Box gap={2}>` row
+- Matches the V2 pattern that was already one-field-per-line
+
+**2. Scroll overflow fix — account for expanded rows**
+- Added `EXPANDED_LINES = 8` constant (header + 6 data fields + spacing)
+- When `expandedIndex` falls within visible range `[scrollOffset, scrollOffset + visibleCount)`, reduces slice to `effectiveCount = visibleCount - EXPANDED_LINES` (min 1)
+- `displayPositions`, `endIndex`, and scroll indicator all use `effectiveCount`
+- Prevents expanded session data from overflowing the panel's fixed height
+
+### Verification:
+- `npx tsc --noEmit` — zero errors
+- `pnpm --filter @pulse-play/simulator test` — 133 tests passed, 0 failures
