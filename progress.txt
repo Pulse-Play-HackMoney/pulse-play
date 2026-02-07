@@ -2008,3 +2008,82 @@ Token-only fix in `tailwind.config.ts` to improve contrast ratios. No component 
 ### Verification:
 - `npx tsc --noEmit` — zero errors
 - `pnpm --filter @pulse-play/simulator test` — 133 tests passed, 0 failures
+
+---
+
+## 2026-02-07: Simulator TUI Bug Fixes — Event Log Clearing + Positions Scroll + Session Data Formatting
+Worktree: pulse-play-dashboard-migration
+
+### Bug 1: Event log randomly clears
+**Root causes identified:**
+1. `addEvent` called `setEventLogScrollOffset(Number.MAX_SAFE_INTEGER)` → `events.slice(MAX_SAFE_INTEGER, ...)` → empty array for one frame
+2. `processMessage` depended on `outcomes` state → ODDS_UPDATE re-created processMessage ref → message effect re-fired → duplicate events + another MAX_SAFE_INTEGER flash
+3. `useWebSocket` used `lastMessage` useState → React batching drops messages arriving in same tick
+
+**Fixes applied:**
+- **useWebSocket.ts**: Migrated from `lastMessage` useState to `messageQueueRef + queueVersion` counter pattern (matching dashboard)
+- **App.tsx**: Removed `setEventLogScrollOffset(Number.MAX_SAFE_INTEGER)` from `addEvent` — existing clamping effect already auto-scrolls
+- **App.tsx**: Added `outcomesRef` (useRef synced via useEffect), replaced `outcomes` reads in `processMessage` with `outcomesRef.current`, removed `outcomes` from deps
+- **App.tsx**: Replaced lastMessage effect with queue drain: `messageQueue.current!.splice(0)` loop, deps `[queueVersion, processMessage, addEvent, messageQueue]`
+- **EventLog.tsx**: Added defensive offset clamping: `safeOffset = Math.max(0, Math.min(scrollOffset, Math.max(0, events.length - visibleCount)))` before slicing
+
+### Bug 2: Column headers disappear + expanding lower positions "switches pages"
+**Root causes:**
+1. `positionsVisibleCount = positionsHeight - 5` was off by one — actual overhead is 6 lines (border×2 + title + marginBottom + headers + separator)
+2. Expanding a position near end of slice caused `effectiveCount` to shrink, pushing the expanded position outside the visible range
+
+**Fixes applied:**
+- **App.tsx**: Changed `positionsHeight - 5` → `positionsHeight - 6`
+- **App.tsx**: Expand handler now adjusts `scrollOffset` when selected position falls outside effective range after expansion
+- **PositionsPanel.tsx**: Exported `EXPANDED_LINES` constant for use in App.tsx
+
+### Bug 3: Session data formatting — left labels, right values
+**Fix applied:**
+- **PositionsPanel.tsx**: Added `LABEL_WIDTH=12` and `VALUE_WIDTH=14` constants
+- V2 and V3 session data rows now use `label.padEnd(LABEL_WIDTH)` + `value.padStart(VALUE_WIDTH)` for clean aligned columns
+- V2 fee row combines fee + percent into one value string before padding
+
+### Files Changed
+| File | Changes |
+|---|---|
+| `src/hooks/useWebSocket.ts` | Queue pattern migration (lastMessage → messageQueueRef + queueVersion) |
+| `src/App.tsx` | Queue drain, outcomesRef, remove MAX_SAFE_INTEGER, fix positionsVisibleCount, fix expand handler scroll |
+| `src/components/PositionsPanel.tsx` | Export EXPANDED_LINES, reformat V2+V3 session data alignment |
+| `src/components/EventLog.tsx` | Defensive offset clamping |
+
+### Verification:
+- `npx tsc --noEmit` — zero errors
+- `pnpm --filter @pulse-play/simulator test` — 133 tests passed, 0 failures
+
+---
+
+## Simulator: README + HelpOverlay + MarketsOverlay Improvements
+Date: 2026-02-07
+
+### Problem
+1. `:sim config` lacked usage examples in README and help overlay only said "Show/set sim config" with no key names
+2. `:markets` command missing from README admin table
+3. `Enter / e` position navigation missing from README navigation table
+4. MarketsOverlay table columns misaligned — UUID IDs (36 chars) overflowed 28-char and 16-char column widths
+
+### Changes
+
+**README.md:**
+- Added "Usage Examples" section under Simulation Config table with exact `:sim config` syntax
+- Added important note about stop→config→start workflow for mid-session changes
+- Added `:markets` to Admin command table
+- Added `Enter / e` to Navigation table for position expand/collapse
+
+**HelpOverlay.tsx:**
+- Changed `:sim config` description to `'View config (or set: key=val ...)'`
+- Added `:sim config keys` entry listing all 6 config key names
+
+**MarketsOverlay.tsx:**
+- Added `truncateId()` helper: `id.slice(0, 10) + '..'` for long IDs
+- Reworked column widths: ID 14, GAME 14, CATEGORY 14, STATUS 12, OUTCOME rest
+- Separator widened from 60 to 70 chars
+- Both market ID and game ID now truncated cleanly
+
+### Verification
+- `npx tsc --noEmit` — zero errors
+- `pnpm --filter @pulse-play/simulator test` — 133 tests passed
