@@ -13,17 +13,16 @@ export default function AccountPage() {
   return (
     <div className="space-y-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white">Account</h1>
-        <p className="text-gray-400 mt-2">
+        <h1 className="text-2xl font-bold font-mono uppercase tracking-wide text-text-primary">Account</h1>
+        <p className="text-text-secondary mt-2">
           Manage your Yellow Network session and funds
         </p>
       </div>
 
-      <SessionCard />
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-6">
           <AccountFaucetCard onFunded={handleFunded} />
+          <SessionCard />
         </div>
         <div>
           <AccountBalanceCard refreshKey={refreshKey} />

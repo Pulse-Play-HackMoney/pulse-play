@@ -9,8 +9,8 @@ export default function GamesPage() {
   return (
     <div className="space-y-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white">Active Games</h1>
-        <p className="text-gray-400 mt-2">
+        <h1 className="text-2xl font-bold font-mono uppercase tracking-wide text-text-primary">Markets</h1>
+        <p className="text-text-secondary mt-2">
           Browse games and place your bets
         </p>
       </div>

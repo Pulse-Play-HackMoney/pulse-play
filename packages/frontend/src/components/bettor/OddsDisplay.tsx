@@ -24,14 +24,14 @@ export function OddsDisplay({ className = '' }: OddsDisplayProps) {
   if (isLoading) {
     return (
       <div
-        className={`bg-gray-800 rounded-lg p-6 ${className}`}
+        className={`bg-surface-raised border border-border rounded-lg p-6 ${className}`}
         data-testid="odds-loading"
       >
         <div className="animate-pulse">
-          <div className="h-4 bg-gray-700 rounded w-24 mb-4" />
+          <div className="h-4 bg-surface-input rounded w-24 mb-4" />
           <div className="grid grid-cols-2 gap-4">
-            <div className="h-20 bg-gray-700 rounded" />
-            <div className="h-20 bg-gray-700 rounded" />
+            <div className="h-20 bg-surface-input rounded" />
+            <div className="h-20 bg-surface-input rounded" />
           </div>
         </div>
       </div>
@@ -51,9 +51,9 @@ export function OddsDisplay({ className = '' }: OddsDisplayProps) {
   const cols = outcomes.length <= 2 ? 'grid-cols-2' : outcomes.length === 3 ? 'grid-cols-3' : `grid-cols-2 sm:grid-cols-${Math.min(outcomes.length, 4)}`;
 
   return (
-    <div className={`bg-gray-800 rounded-lg p-6 ${className}`} data-testid="odds-display">
+    <div className={`bg-surface-raised border border-border rounded-lg p-6 ${className}`} data-testid="odds-display">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold text-white">Current Odds</h2>
+        <h2 className="text-sm font-mono uppercase tracking-wider text-text-secondary">Current Odds</h2>
         <span
           className={`text-xs px-2 py-1 rounded ${
             isMarketOpen
@@ -78,10 +78,10 @@ export function OddsDisplay({ className = '' }: OddsDisplayProps) {
               <div className={`text-2xl font-bold ${color.text}`} data-testid={`price-${outcome.toLowerCase()}-percent`}>
                 {formatPercent(price)}
               </div>
-              <div className="text-sm text-gray-400 mt-1" data-testid={`price-${outcome.toLowerCase()}-american`}>
+              <div className="text-sm text-text-secondary mt-1" data-testid={`price-${outcome.toLowerCase()}-american`}>
                 {formatOdds(price)}
               </div>
-              <div className="text-xs text-gray-500 mt-2">{outcome}</div>
+              <div className="text-xs text-text-muted mt-2">{outcome}</div>
             </div>
           );
         })}

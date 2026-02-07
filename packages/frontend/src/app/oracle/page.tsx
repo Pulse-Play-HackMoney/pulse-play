@@ -59,8 +59,8 @@ export default function OraclePage() {
   return (
     <div className="space-y-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white">Oracle Control Panel</h1>
-        <p className="text-gray-400 mt-2">
+        <h1 className="text-2xl font-bold font-mono uppercase tracking-wide text-text-primary">Oracle Control Panel</h1>
+        <p className="text-text-secondary mt-2">
           Manage games, markets, and outcomes
         </p>
       </div>

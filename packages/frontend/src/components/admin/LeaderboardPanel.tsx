@@ -22,15 +22,15 @@ export function LeaderboardPanel() {
   if (isLoading) {
     return (
       <div className="animate-pulse space-y-2" data-testid="leaderboard-loading">
-        <div className="h-12 bg-gray-700 rounded" />
-        <div className="h-12 bg-gray-700 rounded" />
+        <div className="h-12 bg-surface-input rounded" />
+        <div className="h-12 bg-surface-input rounded" />
       </div>
     );
   }
 
   if (leaderboard.length === 0) {
     return (
-      <p className="text-gray-500 text-sm text-center py-8" data-testid="leaderboard-empty">
+      <p className="text-text-muted text-sm text-center py-8" data-testid="leaderboard-empty">
         No data yet.
       </p>
     );
@@ -39,7 +39,7 @@ export function LeaderboardPanel() {
   return (
     <div data-testid="leaderboard-panel">
       {/* Table header */}
-      <div className="grid grid-cols-6 gap-2 px-4 py-2 text-xs text-gray-500 font-medium border-b border-gray-700">
+      <div className="grid grid-cols-6 gap-2 px-4 py-2 text-xs text-text-muted font-medium border-b border-border">
         <span>#</span>
         <span>Address</span>
         <span className="text-right">Bets</span>
@@ -58,23 +58,23 @@ export function LeaderboardPanel() {
               ? 'text-gray-300'
               : rank === 3
               ? 'text-amber-600'
-              : 'text-gray-500';
+              : 'text-text-muted';
 
           return (
             <div
               key={user.address}
-              className="grid grid-cols-6 gap-2 px-4 py-3 text-sm hover:bg-gray-800/50 transition-colors"
+              className="grid grid-cols-6 gap-2 px-4 py-3 text-sm hover:bg-surface-raised/50 transition-colors"
               data-testid={`leaderboard-row-${i}`}
             >
               <span className={`font-bold ${rankStyle}`}>{rank}</span>
-              <span className="text-white font-mono text-xs">{truncate(user.address)}</span>
-              <span className="text-gray-400 text-right">{user.totalBets}</span>
+              <span className="text-text-primary font-mono text-xs">{truncate(user.address)}</span>
+              <span className="text-text-secondary text-right">{user.totalBets}</span>
               <span className="text-right">
                 <span className="text-green-400">{user.totalWins}</span>
-                <span className="text-gray-600">/</span>
+                <span className="text-text-muted">/</span>
                 <span className="text-red-400">{user.totalLosses}</span>
               </span>
-              <span className="text-gray-400 text-right">${user.totalWagered.toFixed(2)}</span>
+              <span className="text-text-secondary text-right">${user.totalWagered.toFixed(2)}</span>
               <span
                 className={`text-right font-medium ${
                   user.netPnl >= 0 ? 'text-green-400' : 'text-red-400'

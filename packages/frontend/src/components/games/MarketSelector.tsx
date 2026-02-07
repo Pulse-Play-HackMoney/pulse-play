@@ -73,8 +73,8 @@ export function MarketSelector({
   if (isLoading) {
     return (
       <div className={`flex gap-2 ${className}`} data-testid="market-selector-loading">
-        <div className="h-9 w-24 bg-gray-700 rounded-lg animate-pulse" />
-        <div className="h-9 w-28 bg-gray-700 rounded-lg animate-pulse" />
+        <div className="h-9 w-24 bg-surface-input rounded-lg animate-pulse" />
+        <div className="h-9 w-28 bg-surface-input rounded-lg animate-pulse" />
       </div>
     );
   }
@@ -82,7 +82,7 @@ export function MarketSelector({
   if (categories.length === 0) {
     return (
       <div className={className} data-testid="market-selector-empty">
-        <p className="text-gray-500 text-sm">No market categories for this sport.</p>
+        <p className="text-text-muted text-sm">No market categories for this sport.</p>
       </div>
     );
   }
@@ -103,7 +103,7 @@ export function MarketSelector({
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
               isSelected
                 ? 'bg-white text-gray-900'
-                : 'bg-gray-800 text-gray-400 hover:text-white'
+                : 'bg-surface-raised border border-border text-text-secondary hover:text-text-primary'
             }`}
             data-testid={`category-${cat.id}`}
           >

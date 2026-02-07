@@ -71,11 +71,11 @@ export function AccountFaucetCard({ className = '', onFunded }: AccountFaucetCar
   };
 
   return (
-    <div className={`bg-gray-800 rounded-lg p-6 ${className}`} data-testid="account-faucet-card">
-      <h2 className="text-lg font-semibold text-white mb-4">Fund Account</h2>
+    <div className={`bg-surface-raised border border-border rounded-lg p-6 ${className}`} data-testid="account-faucet-card">
+      <h2 className="text-sm font-mono uppercase tracking-wider text-text-secondary mb-4">Fund Account</h2>
 
       <div className="mb-4">
-        <label className="block text-sm text-gray-400 mb-2">Select Amount (ytest.usd)</label>
+        <label className="block text-xs font-mono uppercase tracking-wider text-text-muted mb-2">Select Amount (ytest.usd)</label>
         <div className="grid grid-cols-4 gap-2">
           {PRESET_AMOUNTS.map((amount) => (
             <button
@@ -84,7 +84,7 @@ export function AccountFaucetCard({ className = '', onFunded }: AccountFaucetCar
               className={`py-2 rounded-lg text-sm font-medium transition-colors ${
                 selectedAmount === amount
                   ? 'bg-blue-500/20 border border-blue-500 text-blue-400'
-                  : 'bg-gray-700 border border-gray-600 text-gray-300 hover:border-gray-500'
+                  : 'bg-surface-input border border-border text-text-secondary hover:border-border-emphasis'
               }`}
               data-testid={`account-faucet-preset-${amount}`}
             >
@@ -95,7 +95,7 @@ export function AccountFaucetCard({ className = '', onFunded }: AccountFaucetCar
       </div>
 
       <div className="mb-4">
-        <label className="block text-sm text-gray-400 mb-2">Custom Amount (multiples of $10)</label>
+        <label className="block text-xs font-mono uppercase tracking-wider text-text-muted mb-2">Custom Amount (multiples of $10)</label>
         <input
           type="number"
           value={customAmount}
@@ -103,7 +103,7 @@ export function AccountFaucetCard({ className = '', onFunded }: AccountFaucetCar
           placeholder="e.g. 200"
           step={10}
           min={10}
-          className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+          className="w-full bg-surface-input border border-border rounded-lg px-4 py-2 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
           data-testid="account-faucet-custom-input"
         />
       </div>
@@ -138,7 +138,7 @@ export function AccountFaucetCard({ className = '', onFunded }: AccountFaucetCar
       <button
         onClick={handleFund}
         disabled={!isValidAmount || isLoading || !address}
-        className="w-full py-3 rounded-lg font-medium bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
+        className="w-full py-3 rounded-lg font-medium bg-accent hover:bg-accent-hover text-white disabled:bg-surface-input disabled:text-text-muted disabled:cursor-not-allowed transition-colors"
         data-testid="account-faucet-submit"
       >
         {isLoading

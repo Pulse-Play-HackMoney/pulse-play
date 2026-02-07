@@ -62,8 +62,8 @@ export function BetForm({ className = '', onBetPlaced }: BetFormProps) {
   const cols = outcomes.length <= 2 ? 'grid-cols-2' : outcomes.length === 3 ? 'grid-cols-3' : 'grid-cols-2';
 
   return (
-    <div className={`bg-gray-800 rounded-lg p-6 ${className}`} data-testid="bet-form">
-      <h2 className="text-lg font-semibold text-white mb-4">Place Bet</h2>
+    <div className={`bg-surface-raised border border-border rounded-lg p-6 ${className}`} data-testid="bet-form">
+      <h2 className="text-sm font-mono uppercase tracking-wider text-text-secondary mb-4">Place Bet</h2>
 
       {!isMarketOpen && (
         <div
@@ -84,7 +84,7 @@ export function BetForm({ className = '', onBetPlaced }: BetFormProps) {
       )}
 
       <div className="mb-4">
-        <label className="block text-sm text-gray-400 mb-2">Select Outcome</label>
+        <label className="block text-xs font-mono uppercase tracking-wider text-text-muted mb-2">Select Outcome</label>
         <div className={`grid ${cols} gap-3`}>
           {outcomes.map((outcome, i) => {
             const color = getOutcomeColor(i);
@@ -107,14 +107,14 @@ export function BetForm({ className = '', onBetPlaced }: BetFormProps) {
       </div>
 
       <div className="mb-4">
-        <label className="block text-sm text-gray-400 mb-2">Amount</label>
+        <label className="block text-xs font-mono uppercase tracking-wider text-text-muted mb-2">Amount</label>
         <input
           type="number"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           disabled={!isMarketOpen}
           placeholder="Enter amount..."
-          className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 disabled:opacity-50"
+          className="w-full bg-surface-input border border-border rounded-lg px-4 py-2 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent disabled:opacity-50"
           data-testid="amount-input"
         />
         <div className="flex gap-2 mt-2">
@@ -123,7 +123,7 @@ export function BetForm({ className = '', onBetPlaced }: BetFormProps) {
               key={preset}
               onClick={() => setAmount(String(preset))}
               disabled={!isMarketOpen}
-              className="px-3 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded text-gray-300 disabled:opacity-50"
+              className="px-3 py-1 text-xs bg-surface-input hover:bg-surface-overlay rounded text-text-secondary disabled:opacity-50 transition-colors"
               data-testid={`preset-${preset}`}
             >
               ${preset}
@@ -144,7 +144,7 @@ export function BetForm({ className = '', onBetPlaced }: BetFormProps) {
       <button
         onClick={handleBet}
         disabled={!canBet || isLoading}
-        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium py-3 rounded-lg transition-colors"
+        className="w-full bg-accent hover:bg-accent-hover disabled:bg-surface-input disabled:text-text-muted disabled:cursor-not-allowed text-white font-medium py-3 rounded-lg transition-colors"
         data-testid="place-bet-button"
       >
         {getButtonText()}

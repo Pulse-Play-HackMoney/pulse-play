@@ -51,11 +51,11 @@ export function GameControls({
   const canComplete = game?.status === 'ACTIVE';
 
   return (
-    <div className={`bg-gray-800 rounded-lg p-6 ${className}`} data-testid="game-controls">
-      <h2 className="text-lg font-semibold text-white mb-4">Game State</h2>
+    <div className={`bg-surface-raised border border-border rounded-lg p-6 ${className}`} data-testid="game-controls">
+      <h2 className="text-sm font-mono uppercase tracking-wider text-text-secondary mb-4">Game State</h2>
 
       <div className="flex items-center justify-between mb-4">
-        <span className="text-gray-400">Current Status</span>
+        <span className="text-text-secondary">Current Status</span>
         <span
           className={`px-3 py-1 rounded text-sm font-medium ${
             gameActive
@@ -103,11 +103,11 @@ export function GameControls({
         )}
 
         {game?.status === 'COMPLETED' && (
-          <p className="text-gray-500 text-sm text-center">Game has been completed.</p>
+          <p className="text-text-muted text-sm text-center">Game has been completed.</p>
         )}
 
         {!game && (
-          <p className="text-gray-500 text-sm text-center">Select a game above.</p>
+          <p className="text-text-muted text-sm text-center">Select a game above.</p>
         )}
       </div>
     </div>

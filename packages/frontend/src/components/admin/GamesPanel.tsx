@@ -82,8 +82,8 @@ export function GamesPanel() {
               onClick={() => setStatusFilter(s)}
               className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
                 statusFilter === s
-                  ? 'bg-gray-600 text-white'
-                  : 'bg-gray-800 text-gray-400 hover:text-white'
+                  ? 'bg-surface-input text-text-primary'
+                  : 'bg-surface-raised text-text-secondary hover:text-text-primary'
               }`}
               data-testid={`filter-${s || 'all'}`}
             >
@@ -93,7 +93,7 @@ export function GamesPanel() {
         </div>
         <button
           onClick={() => setShowCreate(!showCreate)}
-          className="text-sm text-blue-400 hover:text-blue-300"
+          className="text-sm text-accent hover:text-accent-hover"
           data-testid="toggle-create"
         >
           {showCreate ? 'Cancel' : '+ New Game'}
@@ -101,11 +101,11 @@ export function GamesPanel() {
       </div>
 
       {showCreate && (
-        <div className="bg-gray-900 rounded-lg p-4 mb-4 space-y-2" data-testid="create-form">
+        <div className="bg-surface-overlay rounded-lg p-4 mb-4 space-y-2" data-testid="create-form">
           <select
             value={sportId}
             onChange={(e) => setSportId(e.target.value)}
-            className="w-full bg-gray-700 text-white rounded px-3 py-2 text-sm"
+            className="w-full bg-surface-input text-text-primary rounded px-3 py-2 text-sm"
             data-testid="create-sport"
           >
             <option value="baseball">Baseball</option>
@@ -116,14 +116,14 @@ export function GamesPanel() {
             placeholder="Home Team"
             value={homeTeam}
             onChange={(e) => setHomeTeam(e.target.value)}
-            className="w-full bg-gray-700 text-white rounded px-3 py-2 text-sm placeholder-gray-500"
+            className="w-full bg-surface-input text-text-primary rounded px-3 py-2 text-sm placeholder-text-muted"
             data-testid="create-home"
           />
           <input
             placeholder="Away Team"
             value={awayTeam}
             onChange={(e) => setAwayTeam(e.target.value)}
-            className="w-full bg-gray-700 text-white rounded px-3 py-2 text-sm placeholder-gray-500"
+            className="w-full bg-surface-input text-text-primary rounded px-3 py-2 text-sm placeholder-text-muted"
             data-testid="create-away"
           />
           {createError && <p className="text-red-400 text-sm" data-testid="create-error">{createError}</p>}
@@ -145,11 +145,11 @@ export function GamesPanel() {
 
       {isLoading ? (
         <div className="animate-pulse space-y-2" data-testid="games-loading">
-          <div className="h-16 bg-gray-700 rounded" />
-          <div className="h-16 bg-gray-700 rounded" />
+          <div className="h-16 bg-surface-input rounded" />
+          <div className="h-16 bg-surface-input rounded" />
         </div>
       ) : games.length === 0 ? (
-        <p className="text-gray-500 text-sm text-center py-8" data-testid="games-empty">
+        <p className="text-text-muted text-sm text-center py-8" data-testid="games-empty">
           No games found.
         </p>
       ) : (
@@ -157,14 +157,14 @@ export function GamesPanel() {
           {games.map((game) => (
             <div
               key={game.id}
-              className="bg-gray-800 rounded-lg px-4 py-3 flex items-center justify-between"
+              className="bg-surface-raised border border-border rounded-lg px-4 py-3 flex items-center justify-between"
               data-testid={`admin-game-${game.id}`}
             >
               <div>
-                <span className="text-white font-medium">
+                <span className="text-text-primary font-medium">
                   {game.homeTeam} vs {game.awayTeam}
                 </span>
-                <span className="text-gray-500 text-xs ml-2 capitalize">{game.sportId}</span>
+                <span className="text-text-muted text-xs ml-2 capitalize">{game.sportId}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span

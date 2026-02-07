@@ -18,7 +18,7 @@ const TABS: { id: AdminTab; label: string }[] = [
 
 export function AdminTabs({ selected, onSelect, className = '' }: AdminTabsProps) {
   return (
-    <div className={`flex gap-1 bg-gray-900 rounded-lg p-1 ${className}`} data-testid="admin-tabs">
+    <div className={`flex gap-1 bg-surface-overlay border border-border rounded-lg p-1 ${className}`} data-testid="admin-tabs">
       {TABS.map((tab) => (
         <button
           key={tab.id}
@@ -26,7 +26,7 @@ export function AdminTabs({ selected, onSelect, className = '' }: AdminTabsProps
           className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
             selected === tab.id
               ? 'bg-gray-700 text-white'
-              : 'text-gray-400 hover:text-white'
+              : 'text-text-secondary hover:text-text-primary'
           }`}
           data-testid={`admin-tab-${tab.id}`}
         >

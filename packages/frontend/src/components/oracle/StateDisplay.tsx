@@ -19,12 +19,12 @@ export function StateDisplay({
 
   if (isLoading) {
     return (
-      <div className={`bg-gray-800 rounded-lg p-6 ${className}`} data-testid="state-loading">
-        <h2 className="text-lg font-semibold text-white mb-4">System State</h2>
+      <div className={`bg-surface-raised border border-border rounded-lg p-6 ${className}`} data-testid="state-loading">
+        <h2 className="text-sm font-mono uppercase tracking-wider text-text-secondary mb-4">System State</h2>
         <div className="animate-pulse space-y-2">
-          <div className="h-4 bg-gray-700 rounded w-3/4" />
-          <div className="h-4 bg-gray-700 rounded w-1/2" />
-          <div className="h-4 bg-gray-700 rounded w-2/3" />
+          <div className="h-4 bg-surface-input rounded w-3/4" />
+          <div className="h-4 bg-surface-input rounded w-1/2" />
+          <div className="h-4 bg-surface-input rounded w-2/3" />
         </div>
       </div>
     );
@@ -32,22 +32,22 @@ export function StateDisplay({
 
   if (error) {
     return (
-      <div className={`bg-gray-800 rounded-lg p-6 ${className}`} data-testid="state-error">
-        <h2 className="text-lg font-semibold text-white mb-4">System State</h2>
+      <div className={`bg-surface-raised border border-border rounded-lg p-6 ${className}`} data-testid="state-error">
+        <h2 className="text-sm font-mono uppercase tracking-wider text-text-secondary mb-4">System State</h2>
         <p className="text-red-400 text-sm">{error}</p>
       </div>
     );
   }
 
   return (
-    <div className={`bg-gray-800 rounded-lg p-6 ${className}`} data-testid="state-display">
-      <h2 className="text-lg font-semibold text-white mb-4">System State</h2>
+    <div className={`bg-surface-raised border border-border rounded-lg p-6 ${className}`} data-testid="state-display">
+      <h2 className="text-sm font-mono uppercase tracking-wider text-text-secondary mb-4">System State</h2>
 
       <div className="space-y-3 text-sm">
         <div className="flex justify-between">
-          <span className="text-gray-400">Game Active</span>
+          <span className="text-text-secondary">Game Active</span>
           <span
-            className={gameActive ? 'text-green-400' : 'text-gray-500'}
+            className={gameActive ? 'text-green-400' : 'text-text-muted'}
             data-testid="state-game-active"
           >
             {gameActive ? 'Yes' : 'No'}
@@ -55,38 +55,38 @@ export function StateDisplay({
         </div>
 
         <div className="flex justify-between">
-          <span className="text-gray-400">Market ID</span>
-          <span className="text-white font-mono" data-testid="state-market-id">
+          <span className="text-text-secondary">Market ID</span>
+          <span className="text-text-primary font-mono" data-testid="state-market-id">
             {market?.id || '-'}
           </span>
         </div>
 
         <div className="flex justify-between">
-          <span className="text-gray-400">Market Status</span>
-          <span className="text-white" data-testid="state-market-status">
+          <span className="text-text-secondary">Market Status</span>
+          <span className="text-text-primary" data-testid="state-market-status">
             {market?.status || 'None'}
           </span>
         </div>
 
         {outcomes.length > 0 && (
           <div className="flex justify-between">
-            <span className="text-gray-400">Outcomes</span>
-            <span className="text-white" data-testid="state-outcomes">
+            <span className="text-text-secondary">Outcomes</span>
+            <span className="text-text-primary" data-testid="state-outcomes">
               {outcomes.join(', ')}
             </span>
           </div>
         )}
 
         <div className="flex justify-between">
-          <span className="text-gray-400">Positions</span>
-          <span className="text-white" data-testid="state-position-count">
+          <span className="text-text-secondary">Positions</span>
+          <span className="text-text-primary" data-testid="state-position-count">
             {positionCount}
           </span>
         </div>
 
         <div className="flex justify-between">
-          <span className="text-gray-400">Connections</span>
-          <span className="text-white" data-testid="state-connection-count">
+          <span className="text-text-secondary">Connections</span>
+          <span className="text-text-primary" data-testid="state-connection-count">
             {connectionCount}
           </span>
         </div>

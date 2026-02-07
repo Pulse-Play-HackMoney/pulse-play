@@ -121,11 +121,11 @@ export function MarketControls({
   const cols = resolveOutcomes.length <= 2 ? 'grid-cols-2' : resolveOutcomes.length === 3 ? 'grid-cols-3' : 'grid-cols-2';
 
   return (
-    <div className={`bg-gray-800 rounded-lg p-6 ${className}`} data-testid="market-controls">
-      <h2 className="text-lg font-semibold text-white mb-4">Market Controls</h2>
+    <div className={`bg-surface-raised border border-border rounded-lg p-6 ${className}`} data-testid="market-controls">
+      <h2 className="text-sm font-mono uppercase tracking-wider text-text-secondary mb-4">Market Controls</h2>
 
       <div className="flex items-center justify-between mb-4">
-        <span className="text-gray-400">Market Status</span>
+        <span className="text-text-secondary">Market Status</span>
         <span
           className={`px-3 py-1 rounded text-sm font-medium ${
             market?.status === 'OPEN'
@@ -165,7 +165,7 @@ export function MarketControls({
         <button
           onClick={handleOpenMarket}
           disabled={!canOpenMarket || isLoading}
-          className="w-full py-3 rounded-lg font-medium bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
+          className="w-full py-3 rounded-lg font-medium bg-green-600 hover:bg-green-700 text-white disabled:bg-surface-input disabled:text-text-muted disabled:cursor-not-allowed transition-colors"
           data-testid="open-market-button"
         >
           {isLoading ? 'Loading...' : 'Open Market'}
@@ -174,7 +174,7 @@ export function MarketControls({
         <button
           onClick={handleCloseMarket}
           disabled={!canCloseMarket || isLoading}
-          className="w-full py-3 rounded-lg font-medium bg-yellow-600 hover:bg-yellow-700 text-white disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
+          className="w-full py-3 rounded-lg font-medium bg-yellow-600 hover:bg-yellow-700 text-white disabled:bg-surface-input disabled:text-text-muted disabled:cursor-not-allowed transition-colors"
           data-testid="close-market-button"
         >
           Close Market
@@ -186,7 +186,7 @@ export function MarketControls({
               key={outcome}
               onClick={() => handleResolve(outcome)}
               disabled={!canResolve || isLoading}
-              className={`py-3 rounded-lg font-medium ${RESOLVE_COLORS[i % RESOLVE_COLORS.length]} text-white disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors`}
+              className={`py-3 rounded-lg font-medium ${RESOLVE_COLORS[i % RESOLVE_COLORS.length]} text-white disabled:bg-surface-input disabled:text-text-muted disabled:cursor-not-allowed transition-colors`}
               data-testid={`resolve-${outcome.toLowerCase()}-button`}
             >
               Resolve: {outcome}
