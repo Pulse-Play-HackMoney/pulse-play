@@ -38,16 +38,6 @@ type ActivePanel = 'wallets' | 'eventLog';
 
 const MAX_EVENT_LOG_SIZE = 100;
 
-function calculatePrices(market: { qBall: number; qStrike: number; b: number } | null) {
-  if (!market) return { priceBall: 0.5, priceStrike: 0.5 };
-  const { qBall, qStrike, b } = market;
-  const maxQ = Math.max(qBall, qStrike);
-  const expBall = Math.exp((qBall - maxQ) / b);
-  const expStrike = Math.exp((qStrike - maxQ) / b);
-  const sumExp = expBall + expStrike;
-  return { priceBall: expBall / sumExp, priceStrike: expStrike / sumExp };
-}
-
 export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
   const { exit } = useApp();
   const { columns, rows } = useTerminalSize();
@@ -63,7 +53,9 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
   // Core state
   const [wallets, setWallets] = useState<SimWalletRow[]>([]);
   const [events, setEvents] = useState<EventLogEntry[]>([]);
-  const [prices, setPrices] = useState({ priceBall: 0.5, priceStrike: 0.5 });
+  const [prices, setPrices] = useState<number[]>([0.5, 0.5]);
+  const [outcomes, setOutcomes] = useState<string[]>(['BALL', 'STRIKE']);
+  const [quantities, setQuantities] = useState<number[]>([0, 0]);
   const [adminState, setAdminState] = useState<AdminStateResponse | null>(null);
   const [simStatus, setSimStatus] = useState<SimStatus>('idle');
   const [results, setResults] = useState<SimResults | null>(null);
@@ -85,9 +77,9 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
   const { connected, lastMessage, error: wsError, reconnect } = useWebSocket(wsUrl);
 
   // Layout calculations — top/bottom split
-  const topHeight = Math.max(Math.floor((rows - 4) * 0.5), 6); // ~50% for wallets+market
-  const bottomHeight = Math.max(rows - 4 - topHeight, 4);       // remaining for event log
-  const walletsVisibleCount = Math.max(topHeight - 3, 1);        // header + border rows
+  const topHeight = Math.max(Math.floor((rows - 4) * 0.5), 6);
+  const bottomHeight = Math.max(rows - 4 - topHeight, 4);
+  const walletsVisibleCount = Math.max(topHeight - 3, 1);
   const eventLogVisibleCount = Math.max(bottomHeight - 2, 1);
   const barWidth = Math.max(Math.floor(columns * 0.45) - 6, 10);
 
@@ -166,7 +158,6 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
               batch.map(async (w) => {
                 await hubClient.fundUser(w.address, 5);
                 walletManager.markFunded(w.index);
-                // Fetch real balance from Clearnode (with fallback)
                 try {
                   const balance = await clearnodePool.getBalance(w.address);
                   walletManager.updateBalance(w.index, balance);
@@ -184,9 +175,8 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
                 addEvent('fund-error', `Fund failed: ${r.reason?.message ?? 'unknown'}`);
               }
             }
-            setWallets(walletManager.getAll()); // Update UI after each batch
+            setWallets(walletManager.getAll());
             setLoadingMessage(`Funding ${funded}/${all.length}...`);
-            // Inter-batch delay to avoid overwhelming the external faucet
             if (i + BATCH_SIZE < all.length) {
               await new Promise((r) => setTimeout(r, 1000));
             }
@@ -213,15 +203,41 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
         }
 
         case 'open': {
-          setLoadingMessage('Creating game & opening market...');
+          // :open [sportId] [categoryId] — defaults to baseball pitching
+          const sportId = parts[1] || 'baseball';
+          const categoryId = parts[2] || 'pitching';
+
+          setLoadingMessage(`Creating game & opening market (${sportId}/${categoryId})...`);
           try {
+            // Fetch category outcomes for this sport
+            let categoryOutcomes: string[] = ['BALL', 'STRIKE'];
+            try {
+              const catRes = await hubClient.getSportCategories(sportId);
+              const cat = catRes.categories.find((c) => c.id === categoryId);
+              if (cat && cat.outcomes.length > 0) {
+                categoryOutcomes = cat.outcomes;
+              }
+            } catch {
+              // Fall back to defaults
+            }
+
             await hubClient.setGameState(true);
-            const gameRes = await hubClient.createGame('baseball', 'Demo Home', 'Demo Away');
+            const gameRes = await hubClient.createGame(sportId, 'Demo Home', 'Demo Away');
             await hubClient.activateGame(gameRes.game.id);
-            const res = await hubClient.openMarket(gameRes.game.id, 'pitching');
+            const res = await hubClient.openMarket(gameRes.game.id, categoryId);
+
+            // Store outcomes for resolve validation and sim engine
+            setOutcomes(categoryOutcomes);
+            const n = categoryOutcomes.length;
+            setPrices(Array(n).fill(1 / n));
+            setQuantities(Array(n).fill(0));
+
+            // Update sim engine config with current outcomes
+            simEngine.setConfig({ outcomes: categoryOutcomes });
+
             setResults(null);
             setLoadingMessage(null);
-            showStatus(`Market ${res.marketId} opened`);
+            showStatus(`Market ${res.marketId} opened (${categoryOutcomes.join('/')})`);
           } catch (err) {
             setLoadingMessage(null);
             showStatus(`Open failed: ${(err as Error).message}`);
@@ -237,8 +253,8 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
 
         case 'resolve': {
           const outcome = parts[1]?.toUpperCase();
-          if (outcome !== 'BALL' && outcome !== 'STRIKE') {
-            showStatus('Usage: :resolve ball|strike');
+          if (!outcome || !outcomes.includes(outcome)) {
+            showStatus(`Usage: :resolve <${outcomes.join('|').toLowerCase()}>`);
             return;
           }
           simEngine.stop();
@@ -274,7 +290,6 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
             showStatus('Simulation stopped');
           } else if (sub === 'config') {
             if (parts.length > 2) {
-              // Parse key=value pairs
               const updates: Partial<SimConfig> = {};
               for (let i = 2; i < parts.length; i++) {
                 const [key, val] = parts[i].split('=');
@@ -286,7 +301,7 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
               showStatus('Config updated');
             } else {
               const config = simEngine.getConfig();
-              showStatus(`bias=${config.ballBias} amt=${config.betAmountMin}-${config.betAmountMax} delay=${config.delayMinMs}-${config.delayMaxMs} max=${config.maxBetsPerWallet}`);
+              showStatus(`bias=${config.outcomeBias} amt=${config.betAmountMin}-${config.betAmountMax} delay=${config.delayMinMs}-${config.delayMaxMs} max=${config.maxBetsPerWallet} outcomes=${config.outcomes.join('/')}`);
             }
           } else {
             showStatus('Usage: :sim start|stop|config');
@@ -301,9 +316,7 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
               ? `Market: ${state.market.id} [${state.market.status}] Positions: ${state.positionCount} WS: ${state.connectionCount}`
               : 'No market active';
             showStatus(status);
-            // Refresh MM balance (non-blocking)
             refreshMMBalance();
-            // Refresh balances for all funded wallets (non-blocking)
             const allWallets = walletManager.getAll();
             const fundedWallets = allWallets.filter((w) => w.funded);
             if (fundedWallets.length > 0) {
@@ -328,6 +341,9 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
           setWallets([]);
           setResults(null);
           setEvents([]);
+          setOutcomes(['BALL', 'STRIKE']);
+          setPrices([0.5, 0.5]);
+          setQuantities([0, 0]);
           try {
             await hubClient.resetBackend();
             await refreshMMBalance();
@@ -366,7 +382,7 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
     } catch (err) {
       showStatus(`Error: ${(err as Error).message}`);
     }
-  }, [walletManager, hubClient, clearnodePool, simEngine, adminState, showStatus, addEvent, reconnect, exit, refreshMMBalance]);
+  }, [walletManager, hubClient, clearnodePool, simEngine, adminState, outcomes, showStatus, addEvent, reconnect, exit, refreshMMBalance]);
 
   // Input routing
   useInput((input, key) => {
@@ -419,26 +435,37 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
     switch (msg.type) {
       case 'STATE_SYNC':
         setAdminState(msg.state);
-        if (msg.state.market) setPrices(calculatePrices(msg.state.market));
+        if (msg.state.prices) setPrices(msg.state.prices);
+        if (msg.state.outcomes) setOutcomes(msg.state.outcomes);
+        if (msg.state.market?.quantities) setQuantities(msg.state.market.quantities);
         break;
       case 'ODDS_UPDATE':
-        setPrices({ priceBall: msg.priceBall, priceStrike: msg.priceStrike });
-        if (msg.qBall !== undefined && msg.qStrike !== undefined) {
-          setAdminState((prev) => {
-            if (!prev?.market) return prev;
-            return { ...prev, market: { ...prev.market, qBall: msg.qBall, qStrike: msg.qStrike } };
-          });
-        }
+        setPrices(msg.prices);
+        setOutcomes(msg.outcomes);
+        setQuantities(msg.quantities);
+        setAdminState((prev) => {
+          if (!prev?.market) return prev;
+          return { ...prev, market: { ...prev.market, quantities: msg.quantities, outcomes: msg.outcomes } };
+        });
         break;
       case 'MARKET_STATUS':
         setAdminState((prev) => {
           if (!prev) return prev;
           const isNew = !prev.market || prev.market.id !== msg.marketId;
           if (isNew) {
-            setPrices({ priceBall: 0.5, priceStrike: 0.5 });
+            const n = outcomes.length || 2;
+            setPrices(Array(n).fill(1 / n));
+            setQuantities(Array(n).fill(0));
             return {
               ...prev,
-              market: { id: msg.marketId, status: msg.status, outcome: msg.outcome ?? null, qBall: 0, qStrike: 0, b: 100 },
+              market: {
+                id: msg.marketId,
+                status: msg.status,
+                outcome: msg.outcome ?? null,
+                quantities: Array(n).fill(0),
+                outcomes: outcomes.length ? outcomes : ['BALL', 'STRIKE'],
+                b: 100,
+              },
               positionCount: 0,
             };
           }
@@ -458,7 +485,6 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
         break;
       case 'POSITION_ADDED':
         setAdminState((prev) => prev ? { ...prev, positionCount: msg.positionCount } : prev);
-        // Update wallet bet counts from position address
         const posWallet = walletManager.getByAddress(msg.position.address);
         if (posWallet) {
           setWallets(walletManager.getAll());
@@ -473,7 +499,7 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
         refreshMMBalance();
         break;
     }
-  }, [walletManager, refreshMMBalance]);
+  }, [walletManager, outcomes, refreshMMBalance]);
 
   // Compute results helper
   const computeResults = useCallback(async (marketId: string, outcome: string) => {
@@ -566,8 +592,9 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
             <Box flexDirection="column" width="45%">
               <MarketPanel
                 state={adminState}
-                priceBall={prices.priceBall}
-                priceStrike={prices.priceStrike}
+                prices={prices}
+                outcomes={outcomes}
+                quantities={quantities}
                 barWidth={barWidth}
                 betCount={totalBets}
                 mmBalance={mmBalance}

@@ -12,11 +12,15 @@ export type SessionStatus = 'open' | 'settling' | 'settled';
 
 export interface WsOddsUpdate {
   type: 'ODDS_UPDATE';
-  priceBall: number;
-  priceStrike: number;
-  qBall: number;
-  qStrike: number;
+  prices: number[];
+  quantities: number[];
+  outcomes: string[];
   marketId: string;
+  // Backward compat
+  priceBall?: number;
+  priceStrike?: number;
+  qBall?: number;
+  qStrike?: number;
 }
 
 export interface WsMarketStatus {
@@ -80,10 +84,15 @@ export interface AdminStateResponse {
     id: string;
     status: MarketStatus;
     outcome: Outcome | null;
-    qBall: number;
-    qStrike: number;
+    quantities: number[];
+    outcomes: string[];
     b: number;
+    // Backward compat
+    qBall?: number;
+    qStrike?: number;
   } | null;
+  prices: number[];
+  outcomes: string[];
   gameState: { active: boolean };
   positionCount: number;
   connectionCount: number;
@@ -119,6 +128,8 @@ export interface BetResponse {
   accepted: boolean;
   reason?: string;
   shares?: number;
+  newPrices?: number[];
+  // Backward compat
   newPriceBall?: number;
   newPriceStrike?: number;
 }
@@ -157,21 +168,25 @@ export interface SimWalletRow {
 }
 
 export interface SimConfig {
-  ballBias: number;
+  outcomeBias: number; // fraction of wallets betting on first outcome
   betAmountMin: number;
   betAmountMax: number;
   delayMinMs: number;
   delayMaxMs: number;
   maxBetsPerWallet: number;
+  outcomes: string[];
+  // Backward compat alias
+  ballBias?: number;
 }
 
 export const DEFAULT_SIM_CONFIG: SimConfig = {
-  ballBias: 0.5,
+  outcomeBias: 0.5,
   betAmountMin: 1.0,
   betAmountMax: 5.0,
   delayMinMs: 1500,
   delayMaxMs: 4000,
   maxBetsPerWallet: 3,
+  outcomes: ['BALL', 'STRIKE'],
 };
 
 export type SimStatus = 'idle' | 'running' | 'stopping';

@@ -115,11 +115,13 @@ export class WalletManager {
 
   /**
    * Assign betting profiles to all wallets based on SimConfig.
-   * ballBias controls what fraction of wallets bet on BALL.
-   * Random bet amounts and delays within config ranges.
+   * outcomeBias controls what fraction of wallets bet on the first outcome.
+   * Remaining wallets are distributed evenly across other outcomes.
    */
   generateProfiles(config: SimConfig): void {
-    const ballCount = Math.round(this.wallets.length * config.ballBias);
+    const outcomes = config.outcomes;
+    const bias = config.outcomeBias ?? config.ballBias ?? 0.5;
+    const firstOutcomeCount = Math.round(this.wallets.length * bias);
 
     // Shuffle indices to randomly assign sides
     const indices = this.wallets.map((_, i) => i);
@@ -128,11 +130,19 @@ export class WalletManager {
       [indices[i], indices[j]] = [indices[j], indices[i]];
     }
 
-    const ballIndices = new Set(indices.slice(0, ballCount));
+    const firstOutcomeIndices = new Set(indices.slice(0, firstOutcomeCount));
 
     for (let i = 0; i < this.wallets.length; i++) {
       const wallet = this.wallets[i];
-      wallet.side = ballIndices.has(i) ? 'BALL' : 'STRIKE';
+      if (firstOutcomeIndices.has(i)) {
+        wallet.side = outcomes[0];
+      } else if (outcomes.length === 2) {
+        wallet.side = outcomes[1];
+      } else {
+        // Distribute across remaining outcomes evenly
+        const remaining = outcomes.slice(1);
+        wallet.side = remaining[i % remaining.length];
+      }
       wallet.maxBets = config.maxBetsPerWallet;
       wallet.betAmount = randomBetween(config.betAmountMin, config.betAmountMax);
       wallet.delayMs = randomBetween(config.delayMinMs, config.delayMaxMs);

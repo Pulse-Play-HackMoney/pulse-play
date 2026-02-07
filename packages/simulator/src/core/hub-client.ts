@@ -67,6 +67,16 @@ export class HubClient {
     return this.post(`/api/games/${gameId}/activate`, {});
   }
 
+  /** Get all sports. */
+  async getSports(): Promise<{ sports: Array<{ id: string; name: string; categories?: Array<{ id: string; outcomes: string[] }> }> }> {
+    return this.get('/api/sports');
+  }
+
+  /** Get categories for a sport. */
+  async getSportCategories(sportId: string): Promise<{ categories: Array<{ id: string; name: string; outcomes: string[] }> }> {
+    return this.get(`/api/sports/${sportId}/categories`);
+  }
+
   /** Get full admin state. */
   async getState(): Promise<AdminStateResponse> {
     return this.get<AdminStateResponse>('/api/admin/state');

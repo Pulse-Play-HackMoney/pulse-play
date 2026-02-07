@@ -50,7 +50,8 @@ function createMockWalletManager() {
     clear: jest.fn(),
     count: 0,
     generateProfiles: jest.fn((config: SimConfig) => {
-      const ballCount = Math.round(wallets.length * config.ballBias);
+      const bias = config.outcomeBias ?? config.ballBias ?? 0.5;
+      const ballCount = Math.round(wallets.length * bias);
       for (let i = 0; i < wallets.length; i++) {
         wallets[i].side = i < ballCount ? 'BALL' : 'STRIKE';
         wallets[i].maxBets = config.maxBetsPerWallet;
@@ -133,14 +134,14 @@ describe('SimulationEngine', () => {
   describe('config', () => {
     it('has default config', () => {
       const config = engine.getConfig();
-      expect(config.ballBias).toBe(0.5);
+      expect(config.outcomeBias).toBe(0.5);
       expect(config.maxBetsPerWallet).toBe(3);
     });
 
     it('merges partial config', () => {
-      engine.setConfig({ ballBias: 0.7, maxBetsPerWallet: 5 });
+      engine.setConfig({ outcomeBias: 0.7, maxBetsPerWallet: 5 });
       const config = engine.getConfig();
-      expect(config.ballBias).toBe(0.7);
+      expect(config.outcomeBias).toBe(0.7);
       expect(config.maxBetsPerWallet).toBe(5);
       // Others stay default
       expect(config.betAmountMin).toBe(1.0);

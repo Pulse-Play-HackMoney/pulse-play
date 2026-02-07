@@ -7,6 +7,9 @@ import type {
   ClearnodeConnectionStatus,
 } from '../types.js';
 
+// Color cycle for N outcomes
+const OUTCOME_COLORS = ['cyan', 'magenta', 'yellow', 'green', 'blue', 'red'];
+
 /** Formats a probability (0-1) as a percentage string. */
 export function formatOdds(price: number): string {
   return `${(price * 100).toFixed(1)}%`;
@@ -61,9 +64,16 @@ export function getStatusColor(status: MarketStatus): string {
   }
 }
 
-/** Returns a color for outcome. */
-export function getOutcomeColor(outcome: Outcome): string {
-  return outcome === 'BALL' ? 'cyan' : 'magenta';
+/** Returns a color for outcome using a cycle array. */
+export function getOutcomeColor(outcome: Outcome, index?: number): string {
+  if (index !== undefined) {
+    return OUTCOME_COLORS[index % OUTCOME_COLORS.length];
+  }
+  const known: Record<string, string> = {
+    BALL: 'cyan', MAKE: 'cyan', GOAL: 'cyan', HIT: 'cyan',
+    STRIKE: 'magenta', MISS: 'magenta', NO_GOAL: 'magenta', OUT: 'magenta',
+  };
+  return known[outcome] ?? 'cyan';
 }
 
 /** Returns a color for session status. */
@@ -122,8 +132,10 @@ export function getSimEventColor(type: SimEvent['type']): string {
 /** Formats a WsMessage into a human-readable log entry. */
 export function formatWsMessage(msg: WsMessage): string {
   switch (msg.type) {
-    case 'ODDS_UPDATE':
-      return `Ball: ${formatOdds(msg.priceBall)}, Strike: ${formatOdds(msg.priceStrike)}`;
+    case 'ODDS_UPDATE': {
+      const parts = msg.outcomes.map((o, i) => `${o}: ${formatOdds(msg.prices[i])}`);
+      return parts.join(', ');
+    }
     case 'MARKET_STATUS':
       return msg.outcome ? `${msg.status} (${msg.outcome})` : msg.status;
     case 'GAME_STATE':

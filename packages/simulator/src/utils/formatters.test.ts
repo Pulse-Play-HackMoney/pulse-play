@@ -87,9 +87,26 @@ describe('formatters', () => {
   });
 
   describe('formatWsMessage', () => {
-    it('formats ODDS_UPDATE', () => {
-      const msg: WsMessage = { type: 'ODDS_UPDATE', priceBall: 0.6, priceStrike: 0.4, qBall: 10, qStrike: 5, marketId: 'm1' };
-      expect(formatWsMessage(msg)).toBe('Ball: 60.0%, Strike: 40.0%');
+    it('formats ODDS_UPDATE with array fields', () => {
+      const msg: WsMessage = {
+        type: 'ODDS_UPDATE',
+        prices: [0.6, 0.4],
+        quantities: [10, 5],
+        outcomes: ['BALL', 'STRIKE'],
+        marketId: 'm1',
+      };
+      expect(formatWsMessage(msg)).toBe('BALL: 60.0%, STRIKE: 40.0%');
+    });
+
+    it('formats ODDS_UPDATE with 3 outcomes', () => {
+      const msg: WsMessage = {
+        type: 'ODDS_UPDATE',
+        prices: [0.5, 0.3, 0.2],
+        quantities: [10, 5, 2],
+        outcomes: ['WIN', 'DRAW', 'LOSE'],
+        marketId: 'm1',
+      };
+      expect(formatWsMessage(msg)).toBe('WIN: 50.0%, DRAW: 30.0%, LOSE: 20.0%');
     });
 
     it('formats MARKET_STATUS with outcome', () => {
@@ -148,7 +165,12 @@ describe('formatters', () => {
   });
 
   describe('getOutcomeColor', () => {
-    it('returns cyan for BALL', () => expect(getOutcomeColor('BALL')).toBe('cyan'));
-    it('returns magenta for STRIKE', () => expect(getOutcomeColor('STRIKE')).toBe('magenta'));
+    it('returns cyan for BALL (no index)', () => expect(getOutcomeColor('BALL')).toBe('cyan'));
+    it('returns magenta for STRIKE (no index)', () => expect(getOutcomeColor('STRIKE')).toBe('magenta'));
+    it('cycles colors by index', () => {
+      expect(getOutcomeColor('X', 0)).toBe('cyan');
+      expect(getOutcomeColor('Y', 1)).toBe('magenta');
+      expect(getOutcomeColor('Z', 2)).toBe('yellow');
+    });
   });
 });

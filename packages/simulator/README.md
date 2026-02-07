@@ -53,13 +53,13 @@ pnpm test:watch
 | `:wallets <n>` | Generate N wallets (1-50) |
 | `:fund` | Fund all wallets via hub faucet ($50 each) |
 | `:fund-mm [n]` | Fund market maker ($10 x n, default 5) |
-| `:open` | Set game active + open a new market |
+| `:open [sport] [category]` | Open a market (default: `baseball pitching`) |
 | `:close` | Close the current market |
-| `:resolve ball\|strike` | Resolve market with outcome |
+| `:resolve <outcome>` | Resolve market with outcome (validated against current category) |
 | `:sim start` | Start automated betting |
 | `:sim stop` | Stop automated betting |
 | `:sim config` | Show current simulation config |
-| `:sim config key=val` | Update config (e.g. `ballBias=0.7 maxBetsPerWallet=5`) |
+| `:sim config key=val` | Update config (e.g. `outcomeBias=0.7 maxBetsPerWallet=5`) |
 
 ### Admin
 
@@ -88,17 +88,17 @@ pnpm test:watch
 1. **Generate wallets**: `:wallets 5` — creates 5 wallets with private keys
 2. **Fund wallets**: `:fund` — funds each wallet with $50 via hub faucet
 3. **Fund market maker**: `:fund-mm 10` — funds MM with $100
-4. **Open market**: `:open` — activates the game and opens a new prediction market
+4. **Open market**: `:open` — opens a baseball/pitching market (BALL/STRIKE). Use `:open basketball free_throw` for other sports.
 5. **Start simulation**: `:sim start` — wallets begin placing automated bets with random timing
 6. **Watch**: observe the wallet table, event log, and odds updating in real time
 7. **Stop + close**: `:sim stop` then `:close`
-8. **Resolve**: `:resolve ball` — resolves market, shows winners/losers panel
+8. **Resolve**: `:resolve BALL` — resolves market (outcome must match current category's outcomes)
 
 ## Simulation Config
 
 | Parameter | Default | Description |
 |---|---|---|
-| `ballBias` | `0.5` | Fraction of wallets that bet on BALL |
+| `outcomeBias` | `0.5` | Fraction of wallets betting on the first outcome |
 | `betAmountMin` | `1.0` | Minimum bet amount ($) |
 | `betAmountMax` | `5.0` | Maximum bet amount ($) |
 | `delayMinMs` | `1500` | Minimum delay between bets (ms) |

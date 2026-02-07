@@ -137,7 +137,8 @@ describe('WalletManager', () => {
 
   describe('generateProfiles', () => {
     const config: SimConfig = {
-      ballBias: 0.6,
+      outcomeBias: 0.6,
+      outcomes: ['BALL', 'STRIKE'],
       betAmountMin: 1.0,
       betAmountMax: 5.0,
       delayMinMs: 1000,
