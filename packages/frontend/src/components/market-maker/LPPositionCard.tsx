@@ -50,8 +50,9 @@ export function LPPositionCard({ address, className = '', refreshKey }: LPPositi
     if (!address) return;
     return subscribe((message: WsMessage) => {
       if (
-        (message.type === 'LP_DEPOSIT' || message.type === 'LP_WITHDRAWAL') &&
-        message.address === address
+        ((message.type === 'LP_DEPOSIT' || message.type === 'LP_WITHDRAWAL') &&
+          message.address === address) ||
+        message.type === 'POOL_UPDATE'
       ) {
         fetchShare();
       }

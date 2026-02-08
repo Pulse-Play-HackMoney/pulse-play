@@ -103,7 +103,7 @@ export class LPManager {
     }
 
     const totalShares = this.getTotalShares();
-    const sharePrice = totalShares === 0 ? 1.0 : poolValue / totalShares;
+    const sharePrice = totalShares === 0 ? 1.0 : (poolValue - amount) / totalShares; // Since funds should already be deposited
     const newShares = amount / sharePrice;
     const now = Date.now();
 
@@ -134,16 +134,16 @@ export class LPManager {
       amount,
       shares: newShares,
       sharePrice,
-      poolValueBefore: poolValue,
-      poolValueAfter: poolValue + amount,
+      poolValueBefore: poolValue - amount,
+      poolValueAfter: poolValue,
       timestamp: now,
     }).run();
 
     return {
       shares: newShares,
       sharePrice,
-      poolValueBefore: poolValue,
-      poolValueAfter: poolValue + amount,
+      poolValueBefore: poolValue - amount,
+      poolValueAfter: poolValue,
     };
   }
 

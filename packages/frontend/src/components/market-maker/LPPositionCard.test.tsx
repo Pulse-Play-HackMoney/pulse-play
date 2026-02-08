@@ -184,6 +184,56 @@ describe('LPPositionCard', () => {
     expect(mockGetLPShare).toHaveBeenCalledTimes(2);
   });
 
+  it('re-fetches on POOL_UPDATE message', async () => {
+    mockGetLPShare
+      .mockResolvedValueOnce({
+        address: '0x1234',
+        shares: 100,
+        totalDeposited: 1000,
+        totalWithdrawn: 0,
+        firstDepositAt: Date.now(),
+        lastActionAt: Date.now(),
+        currentValue: 1000,
+        pnl: 0,
+        sharePrice: 10,
+      })
+      .mockResolvedValueOnce({
+        address: '0x1234',
+        shares: 100,
+        totalDeposited: 1000,
+        totalWithdrawn: 0,
+        firstDepositAt: Date.now(),
+        lastActionAt: Date.now(),
+        currentValue: 1100,
+        pnl: 100,
+        sharePrice: 11,
+      });
+
+    render(<LPPositionCard address="0x1234" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('lp-current-value')).toHaveTextContent('$1,000.00');
+    });
+
+    // Simulate POOL_UPDATE (e.g. after market resolution)
+    await act(async () => {
+      subscribeHandler?.({
+        type: 'POOL_UPDATE',
+        poolValue: 1100,
+        totalShares: 100,
+        sharePrice: 11,
+        lpCount: 1,
+        canWithdraw: true,
+      } as unknown as WsMessage);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('lp-current-value')).toHaveTextContent('$1,100.00');
+    });
+
+    expect(mockGetLPShare).toHaveBeenCalledTimes(2);
+  });
+
   it('ignores LP_DEPOSIT for different address', async () => {
     mockGetLPShare.mockResolvedValueOnce({
       address: '0x1234',

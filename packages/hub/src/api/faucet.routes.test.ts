@@ -156,6 +156,15 @@ describe('Faucet Routes', () => {
     expect(res.json().error).toContain('must not exceed 50');
   });
 
+  test('POST /api/faucet/mm broadcasts POOL_UPDATE after funding', async () => {
+    const broadcastSpy = jest.spyOn(ctx.ws, 'broadcast');
+    await app.inject({ method: 'POST', url: '/api/faucet/mm' });
+    expect(broadcastSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'POOL_UPDATE' }),
+    );
+    broadcastSpy.mockRestore();
+  });
+
   test('POST /api/faucet/mm partial failure returns funded count', async () => {
     let callCount = 0;
     (ctx.clearnodeClient.requestFaucet as jest.Mock).mockImplementation(async () => {

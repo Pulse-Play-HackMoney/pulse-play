@@ -17,10 +17,15 @@ export function hasUnsettledPositions(ctx: AppContext): boolean {
  * Broadcast a POOL_UPDATE message with current pool stats.
  * Non-critical — errors are logged but not thrown.
  */
-export async function broadcastPoolUpdate(ctx: AppContext): Promise<void> {
+export async function broadcastPoolUpdate(ctx: AppContext, poolValueOverride?: number): Promise<void> {
   try {
-    const balance = await ctx.clearnodeClient.getBalance();
-    const poolValue = parseFloat(balance) / 1_000_000;
+    let poolValue: number;
+    if (poolValueOverride !== undefined) {
+      poolValue = poolValueOverride;
+    } else {
+      const balance = await ctx.clearnodeClient.getBalance();
+      poolValue = parseFloat(balance) / 1_000_000;
+    }
     const stats = ctx.lpManager.getPoolStats(
       poolValue,
       hasOpenMarkets(ctx),

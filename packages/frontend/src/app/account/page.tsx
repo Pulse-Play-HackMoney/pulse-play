@@ -30,9 +30,9 @@ export default function AccountPage() {
         {/* Left column */}
         <div className="lg:col-span-2 space-y-6">
           <UserStatsCard refreshKey={refreshKey} />
-          <AccountFaucetCard onFunded={handleFunded} />
           <SettlementHistoryCard />
           <ActivePositionsCard />
+          <AccountFaucetCard onFunded={handleFunded} />
         </div>
 
         {/* Right column */}

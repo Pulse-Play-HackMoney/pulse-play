@@ -2579,3 +2579,34 @@ Branch: feature/liquidity-pool (worktree at ../pulse-play-liquidity-pool)
 - Hub: 31 suites, 513 passed (6 skipped, 1 suite skipped — pre-existing)
 - Frontend: 45 suites, 374 passed
 - Hub build: ✅ clean (tsc --noEmit)
+
+## 2026-02-08 — Bug Fix: LP Max Button, Deposit SharePrice, Position Refresh, Simulator Pool
+
+Fixed 4 bugs found during LP feature testing:
+
+1. **Max Button Not Working (LPWithdrawForm)**: `market-maker/page.tsx` now fetches LP data (userShares, canWithdraw) and passes them as props to `<LPWithdrawForm>`. Also subscribes to WS for real-time updates.
+
+2. **Deposit Share Price Shows $0 on Empty Pool**: Added `poolValueOverride` param to `broadcastPoolUpdate()`. Deposit/withdraw routes now pass `result.poolValueAfter` instead of relying on Clearnode balance (which doesn't reflect accounting-only deposits).
+
+3. **LPPositionCard Not Refreshing on Resolution**: Added `POOL_UPDATE` as a trigger for re-fetching in the WS subscribe callback.
+
+4. **Simulator Pool/Balance Not Refreshing After MM Fund**: Added `broadcastPoolUpdate(ctx)` call in faucet MM endpoint after successful funding.
+
+Tests: 514 hub tests passing, 375 frontend tests passing (all green).
+
+## 2026-02-08 — Critical Bug Fix: LP Deposit Missing Clearnode Transfer
+
+**Problem:** `LPDepositForm` was calling `depositLP()` (hub REST) directly without first transferring funds from user → MM wallet via Clearnode. Deposits were accounting-only — no actual USDC moved.
+
+**Fix:** `LPDepositForm` now:
+1. Uses `useClearnode()` to get `transfer` and `refreshBalance`
+2. Step 1: Calls `transfer({ destination: MM_ADDRESS, asset: ASSET, amount })` to move funds user→MM via Clearnode
+3. Step 2: Calls `depositLP()` to record LP shares on the hub
+4. Shows step progress ("Transferring funds..." → "Recording deposit...")
+5. Disables submit when Clearnode is not connected
+6. Calls `refreshBalance()` after successful deposit
+7. If transfer fails, `depositLP` is never called (funds stay with user)
+
+**Tests updated:** 8 tests covering transfer→deposit flow, transfer failure isolation, step labels, and order verification.
+
+Frontend tests: 376 passing (45 suites).

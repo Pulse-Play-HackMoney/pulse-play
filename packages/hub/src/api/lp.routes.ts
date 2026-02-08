@@ -85,8 +85,8 @@ export function registerLPRoutes(app: FastifyInstance, ctx: AppContext): void {
         sharePrice: result.sharePrice,
       });
 
-      // Broadcast POOL_UPDATE
-      await broadcastPoolUpdate(ctx);
+      // Broadcast POOL_UPDATE with accurate pool value (deposit is accounting-only, not yet on Clearnode)
+      await broadcastPoolUpdate(ctx, result.poolValueAfter);
 
       return {
         success: true,
@@ -145,8 +145,8 @@ export function registerLPRoutes(app: FastifyInstance, ctx: AppContext): void {
         sharePrice: result.sharePrice,
       });
 
-      // Broadcast POOL_UPDATE
-      await broadcastPoolUpdate(ctx);
+      // Broadcast POOL_UPDATE with accurate pool value post-withdrawal
+      await broadcastPoolUpdate(ctx, result.poolValueAfter);
 
       return {
         success: true,
