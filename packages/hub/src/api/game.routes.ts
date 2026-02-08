@@ -64,6 +64,7 @@ export function registerGameRoutes(app: FastifyInstance, ctx: AppContext): void 
         type: 'GAME_CREATED',
         game: { id: game.id, sportId: game.sportId, status: game.status },
       });
+      ctx.ws.broadcast({ type: 'GAME_STATE', active: true });
       return { success: true, game: enrichGame(game) };
     } catch (err: any) {
       return reply.status(400).send({ error: err.message });
@@ -77,6 +78,11 @@ export function registerGameRoutes(app: FastifyInstance, ctx: AppContext): void 
         type: 'GAME_CREATED',
         game: { id: game.id, sportId: game.sportId, status: game.status },
       });
+      // Broadcast GAME_STATE inactive if no other active games remain
+      const activeGames = ctx.gameManager.getActiveGames();
+      if (activeGames.length === 0) {
+        ctx.ws.broadcast({ type: 'GAME_STATE', active: false });
+      }
       return { success: true, game: enrichGame(game) };
     } catch (err: any) {
       return reply.status(400).send({ error: err.message });

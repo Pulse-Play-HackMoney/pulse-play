@@ -1,4 +1,5 @@
 import { GameManager } from './manager';
+import { MarketManager } from '../market/manager';
 import { createTestDb, seedDefaults, type DrizzleDB } from '../../db';
 
 describe('GameManager', () => {
@@ -158,6 +159,75 @@ describe('GameManager', () => {
     test('throws if game does not exist', () => {
       expect(() => manager.setImagePath('nonexistent', '/x.jpg'))
         .toThrow('Game nonexistent not found');
+    });
+  });
+
+  describe('completeGame with market validation', () => {
+    let marketManager: MarketManager;
+    let validatedManager: GameManager;
+
+    beforeEach(() => {
+      marketManager = new MarketManager(db);
+      validatedManager = new GameManager(db, marketManager);
+    });
+
+    test('throws when game has unresolved (OPEN) markets', () => {
+      validatedManager.createGame('baseball', 'nyy', 'bos', 'g1');
+      validatedManager.activateGame('g1');
+
+      // Create and open a market for the game
+      const market = marketManager.createMarket('g1', 'pitching');
+      marketManager.openMarket(market.id);
+
+      expect(() => validatedManager.completeGame('g1'))
+        .toThrow('Cannot complete game: 1 market(s) are not resolved');
+    });
+
+    test('throws when game has CLOSED (but not resolved) markets', () => {
+      validatedManager.createGame('baseball', 'nyy', 'bos', 'g1');
+      validatedManager.activateGame('g1');
+
+      const market = marketManager.createMarket('g1', 'pitching');
+      marketManager.openMarket(market.id);
+      marketManager.closeMarket(market.id);
+
+      expect(() => validatedManager.completeGame('g1'))
+        .toThrow('Cannot complete game: 1 market(s) are not resolved');
+    });
+
+    test('succeeds when all markets are resolved', () => {
+      validatedManager.createGame('baseball', 'nyy', 'bos', 'g1');
+      validatedManager.activateGame('g1');
+
+      const market = marketManager.createMarket('g1', 'pitching');
+      marketManager.openMarket(market.id);
+      marketManager.closeMarket(market.id);
+      marketManager.resolveMarket(market.id, 'BALL', []);
+
+      const game = validatedManager.completeGame('g1');
+      expect(game.status).toBe('COMPLETED');
+    });
+
+    test('succeeds when game has no markets', () => {
+      validatedManager.createGame('baseball', 'nyy', 'bos', 'g1');
+      validatedManager.activateGame('g1');
+
+      const game = validatedManager.completeGame('g1');
+      expect(game.status).toBe('COMPLETED');
+    });
+
+    test('throws with correct count for multiple unresolved markets', () => {
+      validatedManager.createGame('baseball', 'nyy', 'bos', 'g1');
+      validatedManager.activateGame('g1');
+
+      const m1 = marketManager.createMarket('g1', 'pitching');
+      marketManager.openMarket(m1.id);
+
+      const m2 = marketManager.createMarket('g1', 'pitching');
+      marketManager.openMarket(m2.id);
+
+      expect(() => validatedManager.completeGame('g1'))
+        .toThrow('Cannot complete game: 2 market(s) are not resolved');
     });
   });
 });

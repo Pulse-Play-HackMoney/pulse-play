@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import type { Game, GameStatus } from './types.js';
 import type { DrizzleDB } from '../../db/connection.js';
+import type { MarketManager } from '../market/manager.js';
 import { games, teams } from '../../db/schema.js';
 
 function toGame(row: typeof games.$inferSelect): Game {
@@ -20,9 +21,11 @@ function toGame(row: typeof games.$inferSelect): Game {
 
 export class GameManager {
   private db: DrizzleDB;
+  private marketManager: MarketManager | null;
 
-  constructor(db: DrizzleDB) {
+  constructor(db: DrizzleDB, marketManager?: MarketManager) {
     this.db = db;
+    this.marketManager = marketManager ?? null;
   }
 
   createGame(sportId: string, homeTeamId: string, awayTeamId: string, id?: string): Game {
@@ -80,6 +83,15 @@ export class GameManager {
     const game = this.getGameOrThrow(gameId);
     if (game.status !== 'ACTIVE') {
       throw new Error(`Cannot complete game: status is ${game.status}`);
+    }
+
+    // Validate all markets are resolved before completing
+    if (this.marketManager) {
+      const markets = this.marketManager.getMarketsByGame(gameId);
+      const unresolved = markets.filter((m) => m.status !== 'RESOLVED');
+      if (unresolved.length > 0) {
+        throw new Error(`Cannot complete game: ${unresolved.length} market(s) are not resolved`);
+      }
     }
 
     this.db.update(games)

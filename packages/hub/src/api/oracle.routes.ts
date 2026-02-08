@@ -52,6 +52,8 @@ export function registerOracleRoutes(app: FastifyInstance, ctx: AppContext): voi
       type: 'MARKET_STATUS',
       status: 'OPEN',
       marketId: market.id,
+      gameId: market.gameId,
+      categoryId: market.categoryId,
     });
 
     // Broadcast fresh equal odds for the new market
@@ -100,6 +102,8 @@ export function registerOracleRoutes(app: FastifyInstance, ctx: AppContext): voi
       type: 'MARKET_STATUS',
       status: 'CLOSED',
       marketId: current.id,
+      gameId: current.gameId,
+      categoryId: current.categoryId,
     });
 
     ctx.log.marketClosed(current.id);
@@ -312,6 +316,8 @@ export function registerOracleRoutes(app: FastifyInstance, ctx: AppContext): voi
       status: 'RESOLVED',
       marketId: current.id,
       outcome: outcome as Outcome,
+      gameId: current.gameId,
+      categoryId: current.categoryId,
     });
 
     ctx.log.broadcast('MARKET_STATUS', ctx.ws.getConnectionCount());

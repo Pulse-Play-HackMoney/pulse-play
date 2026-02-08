@@ -12,6 +12,7 @@ export function HelpOverlay({ height }: HelpOverlayProps) {
     { key: ':open [cat]', desc: 'Open market in current game (default: pitching)' },
     { key: ':close', desc: 'Close current market' },
     { key: ':resolve <outcome>', desc: 'Resolve with outcome' },
+    { key: ':complete', desc: 'Complete current game' },
     { header: 'Simulation' },
     { key: ':wallets <n>', desc: 'Generate N wallets' },
     { key: ':fund', desc: 'Fund all wallets via faucet' },

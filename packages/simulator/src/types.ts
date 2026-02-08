@@ -28,6 +28,8 @@ export interface WsMarketStatus {
   status: MarketStatus;
   marketId: string;
   outcome?: Outcome;
+  gameId?: string;
+  categoryId?: string;
 }
 
 export interface WsGameState {

@@ -70,11 +70,13 @@ export function createTestContext(
     getAddress: jest.fn().mockReturnValue('0xMM'),
   } as unknown as ClearnodeClient;
 
+  const marketManager = new MarketManager(db);
+
   return {
     db,
-    marketManager: new MarketManager(db),
+    marketManager,
     positionTracker: new PositionTracker(db),
-    gameManager: new GameManager(db),
+    gameManager: new GameManager(db, marketManager),
     teamManager: new TeamManager(db),
     userTracker: new UserTracker(db),
     clearnodeClient: mockClearnode,

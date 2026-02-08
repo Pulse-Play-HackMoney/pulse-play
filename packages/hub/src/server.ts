@@ -35,11 +35,13 @@ async function main() {
     faucetUrl: process.env.FAUCET_URL ?? 'https://faucet.yellow.com',
   });
 
+  const marketManager = new MarketManager(db);
+
   const ctx: AppContext = {
     db,
-    marketManager: new MarketManager(db),
+    marketManager,
     positionTracker: new PositionTracker(db),
-    gameManager: new GameManager(db),
+    gameManager: new GameManager(db, marketManager),
     teamManager: new TeamManager(db),
     userTracker: new UserTracker(db),
     clearnodeClient,

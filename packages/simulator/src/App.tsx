@@ -293,6 +293,22 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
             // Store outcomes for resolve validation and sim engine
             setCurrentMarketId(res.marketId);
             setOutcomes(categoryOutcomes);
+
+            // Update adminState.market so SystemInfo has gameId/categoryId immediately
+            setAdminState((prev) => ({
+              ...(prev ?? { gameState: { active: true }, positionCount: 0, connectionCount: 0, prices: [], outcomes: [] }),
+              market: {
+                id: res.marketId,
+                status: 'OPEN' as const,
+                outcome: null,
+                quantities: Array(categoryOutcomes.length).fill(0),
+                outcomes: categoryOutcomes,
+                b: 100,
+                gameId: currentGameId,
+                categoryId,
+              },
+              positionCount: 0,
+            }));
             const n = categoryOutcomes.length;
             setPrices(Array(n).fill(1 / n));
             setQuantities(Array(n).fill(0));
@@ -331,6 +347,27 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
           await hubClient.resolveMarket(outcome, rGameId, rCategoryId);
           await refreshMMBalance();
           showStatus(`Market resolved: ${outcome}`);
+          break;
+        }
+
+        case 'complete': {
+          if (!currentGameId) {
+            showStatus('No game loaded. Use :create or :games first');
+            return;
+          }
+          setLoadingMessage('Completing game...');
+          try {
+            await hubClient.completeGame(currentGameId);
+            setCurrentGameId(null);
+            setCurrentMarketId(null);
+            setAdminState((prev) => prev ? { ...prev, gameState: { active: false } } : prev);
+            setLoadingMessage(null);
+            showStatus('Game completed');
+            addEvent('INFO', `Game ${currentGameId} completed`);
+          } catch (err) {
+            setLoadingMessage(null);
+            showStatus(`Complete failed: ${(err as Error).message}`);
+          }
           break;
         }
 
@@ -532,8 +569,20 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
       if (marketRes.market) {
         setCurrentMarketId(marketRes.market.id);
         if (marketRes.market.gameId) setCurrentGameId(marketRes.market.gameId);
+
+        // Determine game active status
+        let isActive = false;
+        if (marketRes.market.gameId) {
+          try {
+            const gamesRes = await hubClient.getGames();
+            const game = gamesRes.games.find((g) => g.id === marketRes.market.gameId);
+            isActive = game?.status === 'ACTIVE';
+          } catch { /* non-critical, default to false */ }
+        }
+
         setAdminState((prev) => ({
-          ...(prev ?? { gameState: { active: false }, positionCount: 0, connectionCount: 0 }),
+          ...(prev ?? { positionCount: 0, connectionCount: 0 }),
+          gameState: { active: isActive },
           market: {
             id: marketRes.market.id,
             status: marketRes.market.status,
@@ -571,6 +620,10 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
       setLoadingMessage('Loading game...');
       setCurrentGameId(gameId);
 
+      // Determine game active status from the games list
+      const selectedGame = gamesList.find((g) => g.id === gameId);
+      const isActive = selectedGame?.status === 'ACTIVE';
+
       // Fetch markets for this game
       const marketsRes = await hubClient.getMarkets();
       const gameMarkets = marketsRes.markets.filter((m) => m.gameId === gameId);
@@ -587,7 +640,8 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
         if (marketRes.market) {
           setCurrentMarketId(marketRes.market.id);
           setAdminState((prev) => ({
-            ...(prev ?? { gameState: { active: false }, positionCount: 0, connectionCount: 0 }),
+            ...(prev ?? { positionCount: 0, connectionCount: 0 }),
+            gameState: { active: isActive },
             market: {
               id: marketRes.market.id,
               status: marketRes.market.status,
@@ -611,6 +665,10 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
         setCurrentMarketId(null);
         setPositions([]);
         setResults(null);
+        setAdminState((prev) => ({
+          ...(prev ?? { market: null, positionCount: 0, connectionCount: 0, prices: [], outcomes: [] }),
+          gameState: { active: isActive },
+        }));
       }
 
       setPositionsScrollOffset(0);
@@ -623,7 +681,7 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
       setLoadingMessage(null);
       showStatus(`Load failed: ${(err as Error).message}`);
     }
-  }, [hubClient, showStatus]);
+  }, [hubClient, showStatus, gamesList]);
 
   // Input routing
   useInput((input, key) => {
@@ -750,10 +808,15 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
 
     switch (msg.type) {
       case 'STATE_SYNC':
-        // Use STATE_SYNC for connection count only; don't overwrite tracked market state
+        // Use STATE_SYNC for connection count + game state; don't overwrite tracked market state
         setAdminState((prev) => {
           if (!prev) return msg.state;
-          return { ...prev, connectionCount: msg.state.connectionCount, sessionCounts: msg.state.sessionCounts };
+          return {
+            ...prev,
+            connectionCount: msg.state.connectionCount,
+            sessionCounts: msg.state.sessionCounts,
+            gameState: msg.state.gameState,
+          };
         });
         break;
       case 'ODDS_UPDATE':
@@ -788,13 +851,22 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
                 quantities: Array(n).fill(0),
                 outcomes: outcomesRef.current.length ? outcomesRef.current : ['BALL', 'STRIKE'],
                 b: 100,
+                gameId: msg.gameId ?? currentGameIdRef.current ?? undefined,
+                categoryId: msg.categoryId,
               },
               positionCount: 0,
             };
           }
           return {
             ...prev,
-            market: { ...prev.market!, id: msg.marketId, status: msg.status, outcome: msg.outcome ?? prev.market!.outcome },
+            market: {
+              ...prev.market!,
+              id: msg.marketId,
+              status: msg.status,
+              outcome: msg.outcome ?? prev.market!.outcome,
+              gameId: msg.gameId ?? prev.market!.gameId,
+              categoryId: msg.categoryId ?? prev.market!.categoryId,
+            },
           };
         });
         // Compute results on resolution using current local positions
@@ -845,6 +917,10 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
               : p
           )
         );
+        break;
+      case 'GAME_CREATED':
+        // Logged via addEvent in the message drain loop; no additional state update needed
+        // (GameList in the dashboard handles this; simulator just logs it)
         break;
       case 'SESSION_SETTLED':
         setPositions((prev) =>

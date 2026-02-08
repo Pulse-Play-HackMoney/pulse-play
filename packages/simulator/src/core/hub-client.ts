@@ -75,6 +75,11 @@ export class HubClient {
     return this.post(`/api/games/${gameId}/activate`, {});
   }
 
+  /** Complete a game. */
+  async completeGame(gameId: string): Promise<{ success: boolean; game: { id: string; status: string } }> {
+    return this.post(`/api/games/${gameId}/complete`, {});
+  }
+
   /** Get all sports. */
   async getSports(): Promise<{ sports: Array<{ id: string; name: string; categories?: Array<{ id: string; outcomes: string[] }> }> }> {
     return this.get('/api/sports');

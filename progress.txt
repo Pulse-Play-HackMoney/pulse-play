@@ -2412,3 +2412,72 @@ Date: 2026-02-07
 - **Simulator:** 5 suites, 142 tests — all pass
 - **Frontend:** 40 suites, 331 tests — all pass
 - **Total:** 908 passing tests (+8 from new tests)
+
+## Fix Stale System Panel Data, Game Active Status, and Add `:complete` Command
+Date: 2026-02-07
+
+### Bugs Fixed
+
+#### Bug 1: Game ID & Category disappear from System Panel after `:create` + `:open`
+- **Root cause:** `:create` sets `adminState.market` to null. `:open` updates `currentMarketId` but never sets `adminState.market` with `gameId`/`categoryId`. Also, `MARKET_STATUS` WS broadcasts didn't include `gameId`/`categoryId`.
+- **Fix (Hub):** Added `gameId` and `categoryId` to all three `MARKET_STATUS` broadcasts in `oracle.routes.ts` (open, close, resolve). Updated `WsMarketStatus` type in `types.ts`.
+- **Fix (Simulator):** Updated `WsMarketStatus` type. In `:open` command, now sets `adminState.market` immediately with `gameId`/`categoryId`. In `MARKET_STATUS` handler, populates `gameId`/`categoryId` from WS message data on both new and existing market objects.
+
+#### Bug 2: Game active status often incorrect
+- **Root cause:** Game activate endpoint only broadcast `GAME_CREATED`, not `GAME_STATE`. Simulator didn't handle `GAME_CREATED`.
+- **Fix (Hub):** `game.routes.ts` now broadcasts `GAME_STATE { active: true }` on activate, and `GAME_STATE { active: false }` on complete (only if no other active games remain).
+- **Fix (Simulator):** Added `GAME_CREATED` case in `processMessage` (logs event, no state change needed).
+
+### Features Added
+
+#### Feature 1: `:complete` command
+- Added `completeGame(gameId)` method to `hub-client.ts`
+- Added `case 'complete':` in `App.tsx executeCommand()` — validates `currentGameId`, calls hub, clears game/market context, sets `gameState.active = false`
+- Added `:complete` to `HelpOverlay.tsx` command reference
+
+#### Feature 2: Prevent completing games with unresolved markets
+- `GameManager` constructor now optionally accepts a `MarketManager`
+- `completeGame()` checks all markets for the game; throws if any are not `RESOLVED`
+- Wired `MarketManager` into `GameManager` in both `context.ts` (test) and `server.ts` (production)
+- Backward compatible: existing code without `MarketManager` skips the check
+
+### Files Modified
+| File | Changes |
+|---|---|
+| `packages/hub/src/api/types.ts` | Added `gameId?`/`categoryId?` to `WsMarketStatus` |
+| `packages/hub/src/api/oracle.routes.ts` | Include `gameId`/`categoryId` in all 3 MARKET_STATUS broadcasts |
+| `packages/hub/src/api/game.routes.ts` | Broadcast `GAME_STATE` on activate/complete |
+| `packages/hub/src/modules/game/manager.ts` | Accept optional `MarketManager`, validate market resolution in `completeGame()` |
+| `packages/hub/src/modules/game/manager.test.ts` | +5 tests for market resolution validation |
+| `packages/hub/src/context.ts` | Wire `MarketManager` into `GameManager` |
+| `packages/hub/src/server.ts` | Wire `MarketManager` into `GameManager` |
+| `packages/simulator/src/types.ts` | Added `gameId?`/`categoryId?` to `WsMarketStatus` |
+| `packages/simulator/src/App.tsx` | Fix `:open` adminState update, add `:complete` command, handle `GAME_CREATED`, populate gameId/categoryId in MARKET_STATUS handler |
+| `packages/simulator/src/core/hub-client.ts` | Added `completeGame()` method |
+| `packages/simulator/src/components/HelpOverlay.tsx` | Added `:complete` to help |
+
+### Test Results
+- **Hub game manager:** 26 tests pass (21 existing + 5 new market validation tests)
+- **Hub oracle routes:** 40 tests pass
+- **Simulator:** Type-checks cleanly (tsc --noEmit)
+- 2 pre-existing timeout failures in bet.routes.test.ts and game.routes.test.ts (unrelated)
+
+## Fix: Game Status in System Panel Not Updating on Game Load
+Date: 2026-02-07
+
+### Problem
+The Game ACTIVE/INACTIVE status in the system panel only reacted to `:create` and `:complete` commands. Loading a game via `:games` overlay or `:markets` overlay didn't update the status. `STATE_SYNC` WS messages also dropped `gameState`.
+
+### Root Cause
+Three places failed to set `adminState.gameState`:
+1. `loadGameFromOverlay` — never set `gameState`, defaulted to previous (or `{ active: false }`)
+2. `loadMarketFromOverlay` — same issue, defaulted to `{ active: false }`
+3. `STATE_SYNC` handler — explicitly copied only `connectionCount` and `sessionCounts`, dropping `gameState`
+
+### Fix
+1. **`loadGameFromOverlay`** — Derives `isActive` from the selected game's `status` field in `gamesList`, sets `gameState: { active: isActive }` in both code paths (with and without active market)
+2. **`loadMarketFromOverlay`** — Fetches the game via `hubClient.getGames()` to determine status, sets `gameState` accordingly
+3. **`STATE_SYNC` handler** — Now passes through `gameState` from the sync message
+
+### Files Modified
+- `packages/simulator/src/App.tsx` — All three fixes above
