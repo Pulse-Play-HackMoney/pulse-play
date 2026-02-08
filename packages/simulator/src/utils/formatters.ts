@@ -160,6 +160,8 @@ export function formatWsMessage(msg: WsMessage): string {
       return `${truncateAddress(msg.address)} withdrew ${formatDollars(msg.amount)} (${formatShares(msg.shares)} shares @ ${formatDollars(msg.sharePrice)})`;
     case 'POOL_UPDATE':
       return `Pool: ${formatDollars(msg.poolValue)} | ${formatShares(msg.totalShares)} shares | ${formatDollars(msg.sharePrice)}/share`;
+    case 'VOLUME_UPDATE':
+      return `Market: ${formatDollars(msg.marketVolume)} | Game: ${formatDollars(msg.gameVolume)}`;
     default:
       return JSON.stringify(msg);
   }

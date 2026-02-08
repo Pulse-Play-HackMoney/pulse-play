@@ -83,12 +83,20 @@ function pushSchema(db: DrizzleDB): void {
     status TEXT NOT NULL DEFAULT 'PENDING',
     quantities TEXT NOT NULL DEFAULT '[]',
     b REAL NOT NULL DEFAULT 100,
+    volume REAL NOT NULL DEFAULT 0,
     outcome TEXT,
     created_at INTEGER NOT NULL,
     opened_at INTEGER,
     closed_at INTEGER,
     resolved_at INTEGER
   )`);
+
+  // Migration: add volume column to existing markets table
+  try {
+    db.run(sql`ALTER TABLE markets ADD COLUMN volume REAL NOT NULL DEFAULT 0`);
+  } catch {
+    // Column already exists — ignore
+  }
 
   db.run(sql`CREATE INDEX IF NOT EXISTS idx_markets_game_category_status
     ON markets(game_id, category_id, status)`);

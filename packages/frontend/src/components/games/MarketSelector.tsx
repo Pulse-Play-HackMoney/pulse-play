@@ -10,6 +10,7 @@ interface MarketSelectorProps {
   markets: MarketData[];
   selected: string | null;
   onSelect: (categoryId: string) => void;
+  categoryVolumes?: Record<string, number>;
   className?: string;
 }
 
@@ -32,6 +33,7 @@ export function MarketSelector({
   markets,
   selected,
   onSelect,
+  categoryVolumes,
   className = '',
 }: MarketSelectorProps) {
   const [categories, setCategories] = useState<MarketCategory[]>([]);
@@ -95,6 +97,7 @@ export function MarketSelector({
         const statusStyle = market
           ? STATUS_BADGE_STYLES[market.status] ?? STATUS_BADGE_STYLES.PENDING
           : null;
+        const catVolume = categoryVolumes?.[cat.id];
 
         return (
           <button
@@ -116,6 +119,16 @@ export function MarketSelector({
                 data-testid={`category-${cat.id}-status`}
               >
                 {market.status}
+              </span>
+            )}
+            {catVolume !== undefined && catVolume > 0 && (
+              <span
+                className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                  isSelected ? 'bg-gray-100 text-gray-600' : 'bg-green-500/10 text-green-400'
+                }`}
+                data-testid={`category-${cat.id}-volume`}
+              >
+                ${catVolume.toFixed(2)}
               </span>
             )}
           </button>

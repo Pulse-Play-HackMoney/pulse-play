@@ -42,6 +42,13 @@ export function GameList({ className = '', sportId }: GameListProps) {
       if (message.type === 'GAME_STATE' || message.type === 'MARKET_STATUS' || message.type === 'GAME_CREATED') {
         fetchGames();
       }
+      if (message.type === 'VOLUME_UPDATE') {
+        setGames((prev) =>
+          prev.map((g) =>
+            g.id === message.gameId ? { ...g, volume: message.gameVolume } : g
+          )
+        );
+      }
     };
     return subscribe(handleMessage);
   }, [subscribe, fetchGames]);

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { getGame } from '@/lib/api';
+import { getGame, getGameVolume } from '@/lib/api';
 import { useWebSocket } from '@/providers/WebSocketProvider';
 import { SelectedMarketProvider } from '@/providers/SelectedMarketProvider';
 import { GameHeader, MarketSelector } from '@/components/games';
@@ -19,14 +19,34 @@ export default function GameDetailPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [gameVolume, setGameVolume] = useState(0);
+  const [categoryVolumes, setCategoryVolumes] = useState<Record<string, number>>({});
+  const [marketVolumes, setMarketVolumes] = useState<Record<string, number>>({});
   const { subscribe } = useWebSocket();
 
   const fetchGame = useCallback(async () => {
     try {
       const data = await getGame(gameId);
       setGame(data.game);
-      setMarkets((data.markets ?? []) as MarketData[]);
+      const marketList = (data.markets ?? []) as MarketData[];
+      setMarkets(marketList);
       setError(null);
+
+      // Initialize volumes from API response
+      if (data.game.volume !== undefined) {
+        setGameVolume(data.game.volume);
+      }
+      // Build category and market volumes from the markets array
+      const catVols: Record<string, number> = {};
+      const mktVols: Record<string, number> = {};
+      for (const m of marketList) {
+        if (m.volume !== undefined) {
+          mktVols[m.id] = m.volume;
+          catVols[m.categoryId] = (catVols[m.categoryId] ?? 0) + m.volume;
+        }
+      }
+      setCategoryVolumes(catVols);
+      setMarketVolumes(mktVols);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load game');
     } finally {
@@ -43,6 +63,11 @@ export default function GameDetailPage() {
     const handleMessage = (message: WsMessage) => {
       if (message.type === 'GAME_STATE' || message.type === 'MARKET_STATUS') {
         fetchGame();
+      }
+      if (message.type === 'VOLUME_UPDATE' && message.gameId === gameId) {
+        setGameVolume(message.gameVolume);
+        setCategoryVolumes((prev) => ({ ...prev, [message.categoryId]: message.categoryVolume }));
+        setMarketVolumes((prev) => ({ ...prev, [message.marketId]: message.marketVolume }));
       }
     };
     return subscribe(handleMessage);
@@ -79,20 +104,21 @@ export default function GameDetailPage() {
 
   return (
     <div className="space-y-6">
-      <GameHeader game={game} />
+      <GameHeader game={game} volume={gameVolume} />
 
       <MarketSelector
         sportId={game.sportId}
         markets={markets}
         selected={selectedCategory}
         onSelect={setSelectedCategory}
+        categoryVolumes={categoryVolumes}
       />
 
       {activeMarket ? (
         <SelectedMarketProvider marketId={activeMarket.id}>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-              <OddsDisplay />
+              <OddsDisplay volume={activeMarket ? marketVolumes[activeMarket.id] : undefined} />
               <BetForm />
             </div>
             <div className="space-y-6">

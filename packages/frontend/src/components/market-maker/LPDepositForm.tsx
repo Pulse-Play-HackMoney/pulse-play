@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { depositLP } from '@/lib/api';
 import { useClearnode } from '@/hooks/useClearnode';
 import { MM_ADDRESS } from '@/lib/config';
-import { toMicroUnits, ASSET } from '@/lib/units';
+import { toMicroUnits, fromMicroUnits, ASSET } from '@/lib/units';
 
 interface LPDepositFormProps {
   address: string | null;
@@ -22,7 +22,7 @@ export function LPDepositForm({ address, className = '', onDeposit }: LPDepositF
   const [step, setStep] = useState<DepositStep>('idle');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const { transfer, refreshBalance, status: clearnodeStatus } = useClearnode();
+  const { transfer, refreshBalance, balance, status: clearnodeStatus } = useClearnode();
 
   const numericAmount = amount ? Number(amount) : 0;
   const isValid = numericAmount > 0;
@@ -93,6 +93,12 @@ export function LPDepositForm({ address, className = '', onDeposit }: LPDepositF
       {clearnodeStatus !== 'connected' && (
         <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 mb-4 text-sm text-yellow-400" data-testid="deposit-clearnode-warning">
           Connect to Clearnode to deposit
+        </div>
+      )}
+
+      {clearnodeStatus === 'connected' && balance && (
+        <div className="text-sm text-text-secondary mb-3" data-testid="deposit-available-balance">
+          Available: ${fromMicroUnits(balance).toFixed(2)}
         </div>
       )}
 

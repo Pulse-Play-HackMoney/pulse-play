@@ -311,4 +311,38 @@ describe('MarketManager', () => {
       expect(result.losers[0].loss).toBe(10);
     });
   });
+
+  describe('volume tracking', () => {
+    test('new market starts with zero volume', () => {
+      const m = manager.createMarket(GAME_ID, CATEGORY_ID);
+      expect(m.volume).toBe(0);
+    });
+
+    test('addVolume increments market volume', () => {
+      const m = manager.createMarket(GAME_ID, CATEGORY_ID);
+      manager.addVolume(m.id, 10);
+      manager.addVolume(m.id, 25);
+      expect(manager.getMarketVolume(m.id)).toBe(35);
+    });
+
+    test('getGameVolume aggregates all markets in a game', () => {
+      const m1 = manager.createMarket(GAME_ID, CATEGORY_ID);
+      const m2 = manager.createMarket(GAME_ID, CATEGORY_ID);
+      manager.addVolume(m1.id, 10);
+      manager.addVolume(m2.id, 20);
+      expect(manager.getGameVolume(GAME_ID)).toBe(30);
+    });
+
+    test('getCategoryVolume aggregates markets by category', () => {
+      const m1 = manager.createMarket(GAME_ID, CATEGORY_ID);
+      const m2 = manager.createMarket(GAME_ID, CATEGORY_ID);
+      manager.addVolume(m1.id, 15);
+      manager.addVolume(m2.id, 5);
+      expect(manager.getCategoryVolume(GAME_ID, CATEGORY_ID)).toBe(20);
+    });
+
+    test('getMarketVolume returns 0 for nonexistent market', () => {
+      expect(manager.getMarketVolume('nonexistent')).toBe(0);
+    });
+  });
 });

@@ -56,6 +56,7 @@ export const markets = sqliteTable('markets', {
   status: text('status').notNull().default('PENDING'),
   quantities: text('quantities').notNull().default('[]'), // JSON array: '[0,0]'
   b: real('b').notNull().default(100),
+  volume: real('volume').notNull().default(0),
   outcome: text('outcome'),
   createdAt: integer('created_at').notNull(),
   openedAt: integer('opened_at'),

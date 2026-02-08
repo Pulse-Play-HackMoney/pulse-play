@@ -10,15 +10,6 @@ interface EventLogProps {
   isActive: boolean;
 }
 
-function tryPrettyPrintJson(raw: string): string | null {
-  try {
-    const parsed = JSON.parse(raw);
-    return JSON.stringify(parsed, null, 2);
-  } catch {
-    return null;
-  }
-}
-
 function getEventColor(type: string): string {
   // Hub WS event colors
   switch (type) {
@@ -28,6 +19,7 @@ function getEventColor(type: string): string {
     case 'BET_RESULT': return 'magenta';
     case 'POSITION_ADDED': return 'white';
     case 'SESSION_SETTLED': return 'blue';
+    case 'VOLUME_UPDATE': return 'green';
     default: break;
   }
   // Sim event colors
@@ -46,8 +38,8 @@ export function EventLog({ events, scrollOffset, visibleCount, isActive }: Event
       borderStyle="single"
       borderColor={isActive ? 'cyan' : undefined}
       paddingX={1}
-      // paddingBottom={}
       flexGrow={1}
+      overflow="hidden"
     >
       <Box justifyContent="center" gap={1}>
         <Text bold color="white">EVENT LOG</Text>
@@ -59,21 +51,17 @@ export function EventLog({ events, scrollOffset, visibleCount, isActive }: Event
       </Box>
 
       {displayEvents.length > 0 ? (
-        displayEvents.map((event, idx) => {
-          const prettyJson = tryPrettyPrintJson(event.message);
-          return (
-            <Box key={`${event.timestamp.getTime()}-${safeOffset + idx}`} flexDirection="column" gap={0}>
-              <Box gap={1}>
-                <Text color="gray">{formatTime(event.timestamp)}</Text>
-                <Text color={getEventColor(event.type)}>[{event.type}]</Text>
-                {prettyJson === null && <Text>{event.message}</Text>}
-              </Box>
-              {prettyJson !== null && (
-                <Text>{prettyJson}</Text>
-              )}
-            </Box>
-          );
-        })
+        displayEvents.map((event, idx) => (
+          <Box key={`${event.timestamp.getTime()}-${safeOffset + idx}`}>
+            <Text wrap="truncate">
+              <Text color="gray">{formatTime(event.timestamp)}</Text>
+              {' '}
+              <Text color={getEventColor(event.type)}>[{event.type}]</Text>
+              {' '}
+              {event.message}
+            </Text>
+          </Box>
+        ))
       ) : (
         <Box>
           <Text color="gray" dimColor>

@@ -243,6 +243,18 @@ export async function completeGame(
   return handleResponse(response);
 }
 
+export interface GameVolumeResponse {
+  gameId: string;
+  gameVolume: number;
+  categories: Record<string, number>;
+  markets: Array<{ id: string; categoryId: string; volume: number }>;
+}
+
+export async function getGameVolume(gameId: string): Promise<GameVolumeResponse> {
+  const response = await fetch(`${HUB_REST_URL}/api/games/${gameId}/volume`);
+  return handleResponse<GameVolumeResponse>(response);
+}
+
 // ── Oracle Endpoints ──
 
 export async function setGameState(

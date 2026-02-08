@@ -46,7 +46,7 @@ export class GameManager {
       throw new Error(`Away team '${awayTeamId}' does not belong to sport '${sportId}'`);
     }
 
-    const gameId = id ?? `${homeTeam.abbreviation.toLowerCase()}-${awayTeam.abbreviation.toLowerCase()}-${Date.now()}`;
+    const gameId = id ?? `${homeTeam.abbreviation.toLowerCase()}-${awayTeam.abbreviation.toLowerCase()}-${Math.random().toString(36).substring(2, 7)}`;
     const now = Date.now();
 
     this.db.insert(games).values({

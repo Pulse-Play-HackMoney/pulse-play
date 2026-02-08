@@ -33,6 +33,7 @@ function buildMarketResponse(market: Market | null, ctx: AppContext) {
       outcome: market.outcome,
       quantities: market.quantities,
       b: market.b,
+      volume: market.volume,
       // backward compat
       qBall: market.quantities[0] ?? 0,
       qStrike: market.quantities[1] ?? 0,

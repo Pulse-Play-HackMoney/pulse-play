@@ -13,9 +13,10 @@ interface MarketPanelProps {
   betCount?: number;
   mmBalance?: string | null;
   results?: SimResults | null;
+  volume?: { market: number; category: number; game: number };
 }
 
-export function MarketPanel({ state, prices, outcomes, quantities, barWidth = 20, betCount = 0, mmBalance, results }: MarketPanelProps) {
+export function MarketPanel({ state, prices, outcomes, quantities, barWidth = 20, betCount = 0, mmBalance, results, volume }: MarketPanelProps) {
   const market = state?.market;
   const statusColor = market ? getStatusColor(market.status) : 'gray';
 
@@ -56,12 +57,22 @@ export function MarketPanel({ state, prices, outcomes, quantities, barWidth = 20
               bets: {betCount}
             </Text>
             <Text color="gray" dimColor>
-              positions: {state?.positionCount ?? 0}
+              pos: {state?.positionCount ?? 0}
             </Text>
             <Text color="green" dimColor>
               MM: {mmBalance ? formatBalance(mmBalance) : '--'}
             </Text>
           </Box>
+          {volume && volume.game > 0 && (
+            <Box gap={2}>
+              <Text color="yellow" dimColor>
+                vol: {formatDollars(volume.market)}
+              </Text>
+              <Text color="gray" dimColor>
+                game: {formatDollars(volume.game)}
+              </Text>
+            </Box>
+          )}
 
           {/* Results summary (shown after resolution) */}
           {results && market.status === 'RESOLVED' && (

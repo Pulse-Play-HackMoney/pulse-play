@@ -117,7 +117,8 @@ export type WsMessageType =
   | 'GAME_CREATED'
   | 'LP_DEPOSIT'
   | 'LP_WITHDRAWAL'
-  | 'POOL_UPDATE';
+  | 'POOL_UPDATE'
+  | 'VOLUME_UPDATE';
 
 export interface WsOddsUpdate {
   type: 'ODDS_UPDATE';
@@ -240,6 +241,16 @@ export interface WsPoolUpdate {
   canWithdraw: boolean;
 }
 
+export interface WsVolumeUpdate {
+  type: 'VOLUME_UPDATE';
+  marketId: string;
+  marketVolume: number;
+  categoryId: string;
+  categoryVolume: number;
+  gameId: string;
+  gameVolume: number;
+}
+
 export type WsMessage =
   | WsOddsUpdate
   | WsMarketStatus
@@ -254,4 +265,5 @@ export type WsMessage =
   | WsGameCreated
   | WsLPDeposit
   | WsLPWithdrawal
-  | WsPoolUpdate;
+  | WsPoolUpdate
+  | WsVolumeUpdate;

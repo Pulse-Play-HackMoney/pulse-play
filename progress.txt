@@ -2610,3 +2610,154 @@ Tests: 514 hub tests passing, 375 frontend tests passing (all green).
 **Tests updated:** 8 tests covering transfer→deposit flow, transfer failure isolation, step labels, and order verification.
 
 Frontend tests: 376 passing (45 suites).
+
+---
+
+## Small-Medium Task Bundle: Balance Display, Volume, Randomize, Short IDs
+Date: 2026-02-08
+
+### Task 1: Show User Clearnode Balance on LP Page
+- Added `balance` from `useClearnode()` hook in `LPDepositForm.tsx`
+- Displays "Available: $X.XX" above amount input when connected
+- Uses `fromMicroUnits()` to convert micro-units to human-readable
+- Auto-refreshes after deposit via existing `refreshBalance()` call
+
+### Task 2: Volume Tracking & Broadcasting
+- Added `volume` column (REAL, default 0) to `markets` table in schema + connection pushSchema
+- Added ALTER TABLE migration for existing DBs
+- Added `volume` field to Market interface
+- Added MarketManager methods: `addVolume()`, `getMarketVolume()`, `getGameVolume()`, `getCategoryVolume()`
+- Added `VOLUME_UPDATE` WS message type with market/category/game volumes
+- Bet route now calls `addVolume()` and broadcasts `VOLUME_UPDATE` after each bet
+- Added `GET /api/games/:gameId/volume` endpoint with per-category breakdown
+- Added 5 tests for volume tracking methods
+
+### Task 3: Randomize `:create` and `:open` Defaults in Simulator
+- `:create` without args now fetches sports list, picks random sport, fetches teams for that sport, picks 2 random teams
+- `:open` without args now fetches categories for current game's sport, picks random category
+- Falls back to baseball/nyy/bos and pitching if API calls fail
+
+### Task 4: Shorten Game IDs
+- Changed `Date.now()` (13 digits) to `Math.random().toString(36).substring(2, 7)` (5 alphanumeric chars)
+- Result: `nyy-bos-a3f7k` instead of `nyy-bos-1738987654321`
+- Added test verifying 5-char alphanumeric suffix format
+
+### Test Results
+- Market Manager: 38 passed (+5 volume tests)
+- Game Manager: 27 passed (+1 short ID test)
+- Bet Routes: 28 passed (unchanged)
+- Game Routes: 26 passed (unchanged)
+- Frontend: 376 passed (unchanged)
+- Note: LP manager tests (7) were already failing before these changes (pre-existing issue)
+
+---
+
+## Post-CLOB Bug Fixes — Round 3
+Date: 2026-02-08
+Branch: feature/clob (worktree: ../pulse-play-clob)
+
+### Summary
+Fixed 6 bugs discovered during manual testing after Round 2 CLOB fixes.
+
+### Fix 1: P2P Session Data + Version Not Updating in Simulator
+- **Root cause:** 3 gaps in P2P flow vs LMSR: no V2 session data after order placement, no submitAppState before closeSession for P2P losers/winners
+- **Changes:**
+  - Added `SessionDataV2P2P` interface to `session-data.ts` (order confirmation data)
+  - `orderbook.routes.ts`: After fills, construct V2P2P session data, call `submitAppState`, update position tracker, broadcast `SESSION_VERSION_UPDATED`
+  - `oracle.routes.ts`: P2P losers and winners now call `submitAppState` + broadcast `SESSION_VERSION_UPDATED` before `closeSession` (mirrors LMSR pattern)
+  - Added `getPositionBySession(appSessionId)` to `PositionTracker` for version lookup
+  - `simulator/PositionsPanel.tsx`: Added V2P2P display case showing mcps, maxShares, filledShares, fillCount, status
+
+### Fix 2+3: Frontend Balance Card + P2P Toast
+- **Root cause:** `P2PResultToast` component existed but was never mounted
+- `LayoutInner.tsx`: Added `<P2PResultToast />` alongside `<BetResultToast />`
+- `UserOrders.tsx`: Added `refreshBalance()` call after successful `cancelP2POrder()`
+
+### Fix 4: PlaceOrderForm Inputs Still Interactive When Market Not Open
+- **Root cause:** Only submit button was disabled, not individual inputs
+- Added `disabled={!isMarketOpen}` + `disabled:opacity-50` CSS to: outcome buttons, MCPS input, Amount input, preset buttons
+- Added test verifying all inputs are disabled when market is CLOSED
+
+### Fix 5: Hub Allows Opening Market While Another Is CLOSED
+- **Root cause:** Guard only checked `status === 'OPEN'`, skipped CLOSED markets
+- Added second guard: `if (current && current.status === 'CLOSED')` returns 400 error
+- Added test case in oracle.routes.test.ts
+
+### Fix 6: Unfilled/Resting P2P Orders Stay "open" After Resolution
+- **Root cause:** `expireUnfilledOrders` loop closed sessions but never updated position tracker or broadcast
+- Added `updateSessionStatus(appSessionId, 'settled')` and `SESSION_SETTLED` broadcast for each expired order
+
+### Files Modified
+- `packages/hub/src/api/orderbook.routes.ts` (Fix 1A)
+- `packages/hub/src/api/oracle.routes.ts` (Fix 1B, 1C, 5, 6)
+- `packages/hub/src/modules/clearnode/session-data.ts` (Fix 1D)
+- `packages/hub/src/modules/position/tracker.ts` (new getPositionBySession method)
+- `packages/frontend/src/app/LayoutInner.tsx` (Fix 2A, 3)
+- `packages/frontend/src/components/orderbook/UserOrders.tsx` (Fix 2B)
+- `packages/frontend/src/components/orderbook/PlaceOrderForm.tsx` (Fix 4)
+- `packages/frontend/src/components/orderbook/PlaceOrderForm.test.tsx` (Fix 4 test)
+- `packages/hub/src/api/oracle.routes.test.ts` (Fix 5 test)
+- `packages/simulator/src/components/PositionsPanel.tsx` (Fix 1E)
+
+### Test Results
+- **Hub:** 31 suites, 535 passed (6 skipped)
+- **Frontend:** 46 suites, 391 passed
+- **Simulator:** 5 suites, 162 passed
+- **TypeScript:** Hub + Simulator clean (tsc --noEmit)
+
+### Follow-up: Event Log Overflow Fix + Volume Display
+Date: 2026-02-08
+
+**Event Log Overflow Fix (Simulator)**
+- Removed `tryPrettyPrintJson()` — was expanding JSON to multi-line, breaking panel height assumptions
+- Changed each event to render as a single line using `<Text wrap="truncate">`
+- Added `overflow="hidden"` on the EventLog Box container
+- Removed nested `<Box flexDirection="column">` per event — now single `<Box>` with inline `<Text>`
+- Events scroll smoothly within the fixed panel height
+
+**Volume Display — Simulator**
+- Added `WsVolumeUpdate` type to simulator types
+- Added `VOLUME_UPDATE` handler in formatWsMessage (shows "Market: $X.XX | Game: $X.XX")
+- Added `VOLUME_UPDATE` case in EventLog color map (green)
+- Added volume state tracking in App.tsx processMessage
+- MarketPanel now shows "vol: $X.XX | game: $X.XX" below the stats row when volume > 0
+
+**Volume Display — Frontend**
+- Added `WsVolumeUpdate` type to frontend types.ts
+- Game detail page tracks `gameVolume` via VOLUME_UPDATE WebSocket messages (filtered by gameId)
+- GameHeader shows a green "Vol: $X.XX" badge next to status when volume > 0
+- Volume updates in real-time as bets are placed
+
+### Test Results (unchanged)
+- Frontend: 376 passed
+- Simulator: 145 passed  
+- Hub: 119 passed (relevant suites)
+
+### Volume: Initial Load + GameCard Display
+Date: 2026-02-08
+
+**Problem:** Volume was only showing from real-time WS updates. On page load, all volumes showed as 0/hidden.
+
+**Hub API changes:**
+- `enrichGame()` in game.routes.ts now includes `volume` (game-level) in every game response
+- `buildMarketResponse()` in market.routes.ts now includes `volume` in market objects
+- Game detail endpoint (`GET /api/games/:gameId`) returns markets with volume fields
+- Game list endpoint (`GET /api/games`) returns each game with volume
+
+**Frontend changes:**
+- `Game` type: added optional `volume` field
+- `MarketData` type: added optional `volume` field
+- `api.ts`: added `getGameVolume()` API function
+- `GameCard`: shows green "Vol: $X.XX" badge when game has volume > 0
+- `GameList`: handles `VOLUME_UPDATE` WS to update game volume in real-time on home page
+- Game detail page `fetchGame()`: initializes `gameVolume`, `categoryVolumes`, `marketVolumes` from API response on mount (builds category aggregates from markets array)
+- `OddsDisplay`: uses `market?.volume` as fallback when `volume` prop not yet set (initial load)
+
+**Data flow:**
+1. Initial load: API response → volumes populated immediately
+2. Real-time: VOLUME_UPDATE WS → volumes updated live
+3. All three levels (game, category, market) show on first render
+
+### Test Results
+- Frontend: 376 passed
+- Hub game/market routes: 32 passed

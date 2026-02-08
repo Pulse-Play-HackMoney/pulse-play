@@ -106,6 +106,16 @@ export interface WsPoolUpdate {
   canWithdraw: boolean;
 }
 
+export interface WsVolumeUpdate {
+  type: 'VOLUME_UPDATE';
+  marketId: string;
+  marketVolume: number;
+  categoryId: string;
+  categoryVolume: number;
+  gameId: string;
+  gameVolume: number;
+}
+
 export type WsMessage =
   | WsOddsUpdate
   | WsMarketStatus
@@ -119,7 +129,8 @@ export type WsMessage =
   | WsGameCreated
   | WsLPDeposit
   | WsLPWithdrawal
-  | WsPoolUpdate;
+  | WsPoolUpdate
+  | WsVolumeUpdate;
 
 // ── Admin state response ──
 

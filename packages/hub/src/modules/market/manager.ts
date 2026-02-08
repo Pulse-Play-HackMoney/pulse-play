@@ -22,6 +22,7 @@ function toMarket(row: typeof markets.$inferSelect): Market {
     status: row.status as MarketStatus,
     quantities: JSON.parse(row.quantities) as number[],
     b: row.b,
+    volume: row.volume,
     outcome: row.outcome,
     createdAt: row.createdAt,
     openedAt: row.openedAt,
@@ -139,6 +140,33 @@ export class MarketManager {
 
     const totalPayout = winners.reduce((sum, w) => sum + w.payout, 0);
     return { winners, losers, totalPayout };
+  }
+
+  addVolume(marketId: string, amount: number): void {
+    const market = this.getMarketOrThrow(marketId);
+    this.db.update(markets)
+      .set({ volume: market.volume + amount })
+      .where(eq(markets.id, marketId))
+      .run();
+  }
+
+  getMarketVolume(marketId: string): number {
+    const market = this.getMarket(marketId);
+    return market?.volume ?? 0;
+  }
+
+  getGameVolume(gameId: string): number {
+    const rows = this.db.select().from(markets)
+      .where(eq(markets.gameId, gameId))
+      .all();
+    return rows.reduce((sum, r) => sum + (r.volume ?? 0), 0);
+  }
+
+  getCategoryVolume(gameId: string, categoryId: string): number {
+    const rows = this.db.select().from(markets)
+      .where(and(eq(markets.gameId, gameId), eq(markets.categoryId, categoryId)))
+      .all();
+    return rows.reduce((sum, r) => sum + (r.volume ?? 0), 0);
   }
 
   updateQuantities(marketId: string, quantities: number[]): void {

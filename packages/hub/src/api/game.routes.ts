@@ -4,11 +4,12 @@ import type { Game, GameStatus } from '../modules/game/types.js';
 import { saveUpload } from './upload.js';
 
 export function registerGameRoutes(app: FastifyInstance, ctx: AppContext): void {
-  // Helper to enrich a game with team objects
+  // Helper to enrich a game with team objects and volume
   function enrichGame(game: Game) {
     const homeTeam = ctx.teamManager.getTeam(game.homeTeamId);
     const awayTeam = ctx.teamManager.getTeam(game.awayTeamId);
-    return { ...game, homeTeam, awayTeam };
+    const volume = ctx.marketManager.getGameVolume(game.id);
+    return { ...game, homeTeam, awayTeam, volume };
   }
 
   app.get<{ Querystring: { sportId?: string; status?: string } }>('/api/games', async (req) => {
@@ -87,6 +88,29 @@ export function registerGameRoutes(app: FastifyInstance, ctx: AppContext): void 
     } catch (err: any) {
       return reply.status(400).send({ error: err.message });
     }
+  });
+
+  app.get<{ Params: { gameId: string } }>('/api/games/:gameId/volume', async (req, reply) => {
+    const game = ctx.gameManager.getGame(req.params.gameId);
+    if (!game) {
+      return reply.status(404).send({ error: 'Game not found' });
+    }
+
+    const gameVolume = ctx.marketManager.getGameVolume(game.id);
+    const markets = ctx.marketManager.getMarketsByGame(game.id);
+
+    // Group by category
+    const categoryVolumes: Record<string, number> = {};
+    for (const m of markets) {
+      categoryVolumes[m.categoryId] = (categoryVolumes[m.categoryId] ?? 0) + m.volume;
+    }
+
+    return {
+      gameId: game.id,
+      gameVolume,
+      categories: categoryVolumes,
+      markets: markets.map((m) => ({ id: m.id, categoryId: m.categoryId, volume: m.volume })),
+    };
   });
 
   app.post<{ Params: { gameId: string } }>('/api/games/:gameId/image', async (req, reply) => {
