@@ -16,6 +16,7 @@ function toPosition(row: typeof positions.$inferSelect): Position {
     appSessionVersion: row.appSessionVersion,
     sessionStatus: row.sessionStatus as SessionStatus,
     sessionData: row.sessionData ?? undefined,
+    mode: (row.mode as 'lmsr' | 'p2p') ?? 'lmsr',
     timestamp: row.createdAt,
   };
 }
@@ -68,6 +69,7 @@ export class PositionTracker {
       appSessionId: position.appSessionId,
       appSessionVersion: position.appSessionVersion,
       sessionStatus: position.sessionStatus,
+      mode: position.mode ?? 'lmsr',
       createdAt: position.timestamp,
     }).run();
   }

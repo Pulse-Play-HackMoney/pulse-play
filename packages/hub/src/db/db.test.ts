@@ -20,6 +20,8 @@ describe('DB Module', () => {
         'games',
         'market_categories',
         'markets',
+        'p2p_fills',
+        'p2p_orders',
         'positions',
         'settlements',
         'sports',
@@ -45,6 +47,23 @@ describe('DB Module', () => {
       expect(names).toContain('idx_positions_market');
       expect(names).toContain('idx_positions_address');
       expect(names).toContain('idx_positions_session');
+    });
+
+    it('creates indexes on p2p_orders table', () => {
+      const indexes = db.all<{ name: string }>(
+        sql`SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='p2p_orders' AND name NOT LIKE 'sqlite_%'`
+      );
+      const names = indexes.map((i) => i.name).sort();
+      expect(names).toContain('idx_p2p_orders_market_outcome_status');
+      expect(names).toContain('idx_p2p_orders_user');
+    });
+
+    it('creates indexes on p2p_fills table', () => {
+      const indexes = db.all<{ name: string }>(
+        sql`SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='p2p_fills' AND name NOT LIKE 'sqlite_%'`
+      );
+      const names = indexes.map((i) => i.name).sort();
+      expect(names).toContain('idx_p2p_fills_order');
     });
 
     it('creates indexes on users and settlements tables', () => {

@@ -6,7 +6,7 @@ import { getPrices } from '../modules/lmsr/engine.js';
 import { toMicroUnits, ASSET } from '../utils/units.js';
 import { eq } from 'drizzle-orm';
 import { marketCategories } from '../db/schema.js';
-import { encodeSessionData, type SessionDataV3 } from '../modules/clearnode/session-data.js';
+import { encodeSessionData, type SessionDataV3, type SessionDataV3P2P } from '../modules/clearnode/session-data.js';
 
 export function registerOracleRoutes(app: FastifyInstance, ctx: AppContext): void {
 
@@ -142,7 +142,9 @@ export function registerOracleRoutes(app: FastifyInstance, ctx: AppContext): voi
       return reply.status(400).send({ error: 'Invalid outcome' });
     }
 
-    const positions = ctx.positionTracker.getPositionsByMarket(current.id);
+    const allPositions = ctx.positionTracker.getPositionsByMarket(current.id);
+    // Only LMSR positions go through the LMSR resolution path
+    const positions = allPositions.filter(p => (p.mode ?? 'lmsr') === 'lmsr');
     const result = ctx.marketManager.resolveMarket(current.id, outcome as Outcome, positions);
 
     // Build lookup from appSessionId → position (for costPaid + version)
@@ -305,6 +307,172 @@ export function registerOracleRoutes(app: FastifyInstance, ctx: AppContext): voi
         payout: winner.payout,
       });
       ctx.log.sendTo(winner.address, 'BET_RESULT:WIN');
+    }
+
+    // ── P2P Resolution ─────────────────────────────────────────────────
+    const filledP2POrders = ctx.orderBookManager.getFilledOrdersForResolution(current.id);
+    if (filledP2POrders.length > 0) {
+      ctx.log.p2pResolutionStart(current.id, filledP2POrders.length);
+
+      const p2pLosers = filledP2POrders.filter(o => o.outcome !== outcome);
+      const p2pWinners = filledP2POrders.filter(o => o.outcome === outcome);
+
+      // Settle P2P losers first (MM needs funds for winners)
+      for (const order of p2pLosers) {
+        const filledCost = order.filledAmount;
+        const unfilled = order.unfilledAmount;
+        const sessionId = order.appSessionId as `0x${string}`;
+        const loserAddr = order.userAddress as `0x${string}`;
+        const mm = mmAddress as `0x${string}`;
+
+        const v3p2p: SessionDataV3P2P = {
+          v: 3,
+          mode: 'p2p',
+          resolution: outcome as Outcome,
+          result: 'LOSS',
+          orderId: order.orderId,
+          filledShares: order.filledShares,
+          filledCost,
+          payout: 0,
+          profit: -filledCost,
+          refunded: unfilled,
+          timestamp: Date.now(),
+        };
+        const sessionData = encodeSessionData(v3p2p);
+
+        try {
+          await ctx.clearnodeClient.closeSession({
+            appSessionId: sessionId,
+            allocations: [
+              { participant: loserAddr, asset: ASSET, amount: toMicroUnits(unfilled) },
+              { participant: mm, asset: ASSET, amount: toMicroUnits(filledCost) },
+            ],
+            sessionData,
+          });
+          ctx.log.resolutionSessionClosed(order.userAddress, order.appSessionId);
+        } catch (err) {
+          ctx.log.error(`p2p-resolution-loser-${order.userAddress}`, err);
+        }
+
+        ctx.positionTracker.updateSessionStatus(order.appSessionId, 'settled');
+        ctx.ws.broadcast({
+          type: 'SESSION_SETTLED',
+          appSessionId: order.appSessionId,
+          status: 'settled' as const,
+          address: order.userAddress,
+        });
+
+        ctx.userTracker.recordLoss(order.userAddress, filledCost);
+        ctx.orderBookManager.settleOrder(order.orderId);
+        ctx.log.p2pLoserSettled(order.userAddress, filledCost);
+
+        ctx.ws.sendTo(order.userAddress, {
+          type: 'P2P_BET_RESULT',
+          result: 'LOSS',
+          orderId: order.orderId,
+          marketId: current.id,
+          loss: filledCost,
+          refunded: unfilled,
+        });
+      }
+
+      // Settle P2P winners
+      for (const order of p2pWinners) {
+        const filledCost = order.filledAmount;
+        const unfilled = order.unfilledAmount;
+        const filledShares = order.filledShares;
+        const payout = filledShares * 1.0; // $1 per share
+        const feePercent = ctx.transactionFeePercent;
+        const fee = payout * (feePercent / 100);
+        const netPayout = payout - fee;
+        const profit = netPayout - filledCost;
+        const sessionId = order.appSessionId as `0x${string}`;
+        const winnerAddr = order.userAddress as `0x${string}`;
+        const mm = mmAddress as `0x${string}`;
+
+        const v3p2p: SessionDataV3P2P = {
+          v: 3,
+          mode: 'p2p',
+          resolution: outcome as Outcome,
+          result: 'WIN',
+          orderId: order.orderId,
+          filledShares,
+          filledCost,
+          payout: netPayout,
+          profit,
+          refunded: unfilled,
+          timestamp: Date.now(),
+        };
+        const sessionData = encodeSessionData(v3p2p);
+
+        // Close session: return unfilled + fee to MM
+        try {
+          await ctx.clearnodeClient.closeSession({
+            appSessionId: sessionId,
+            allocations: [
+              { participant: winnerAddr, asset: ASSET, amount: toMicroUnits(filledCost + unfilled - fee) },
+              { participant: mm, asset: ASSET, amount: toMicroUnits(fee) },
+            ],
+            sessionData,
+          });
+          ctx.log.resolutionSessionClosed(order.userAddress, order.appSessionId);
+        } catch (err) {
+          ctx.log.error(`p2p-resolution-winner-closeSession-${order.userAddress}`, err);
+        }
+
+        // Transfer profit from MM to winner
+        if (profit > 0) {
+          try {
+            await ctx.clearnodeClient.transfer({
+              destination: winnerAddr,
+              asset: ASSET,
+              amount: toMicroUnits(profit),
+            });
+            ctx.log.resolutionTransfer(order.userAddress, profit);
+          } catch (err) {
+            ctx.log.error(`p2p-resolution-winner-transfer-${order.userAddress}`, err);
+          }
+        }
+
+        ctx.positionTracker.updateSessionStatus(order.appSessionId, 'settled');
+        ctx.ws.broadcast({
+          type: 'SESSION_SETTLED',
+          appSessionId: order.appSessionId,
+          status: 'settled' as const,
+          address: order.userAddress,
+        });
+
+        ctx.userTracker.recordWin(order.userAddress, payout, filledCost);
+        ctx.orderBookManager.settleOrder(order.orderId);
+        ctx.log.p2pWinnerSettled(order.userAddress, netPayout, profit);
+
+        ctx.ws.sendTo(order.userAddress, {
+          type: 'P2P_BET_RESULT',
+          result: 'WIN',
+          orderId: order.orderId,
+          marketId: current.id,
+          payout: netPayout,
+          profit,
+        });
+      }
+
+    }
+
+    // Expire fully unfilled P2P orders + refund (always runs, not just when fills exist)
+    const expiredOrders = ctx.orderBookManager.expireUnfilledOrders(current.id);
+    for (const order of expiredOrders) {
+      try {
+        await ctx.clearnodeClient.closeSession({
+          appSessionId: order.appSessionId as `0x${string}`,
+          allocations: [
+            { participant: order.userAddress as `0x${string}`, asset: ASSET, amount: toMicroUnits(order.amount) },
+            { participant: mmAddress as `0x${string}`, asset: ASSET, amount: '0' },
+          ],
+        });
+      } catch (err) {
+        ctx.log.error(`p2p-expire-close-${order.userAddress}`, err);
+      }
+      ctx.log.orderExpired(order.orderId);
     }
 
     // Clear positions for this market (archives to settlements)

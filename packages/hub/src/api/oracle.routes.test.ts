@@ -854,4 +854,157 @@ describe('Oracle Routes', () => {
       expect(mmAlloc.amount).toBe('100000');
     });
   });
+
+  // ── P2P Resolution ──────────────────────────────────────────────────
+
+  describe('P2P resolution', () => {
+    async function placeP2POrder(userAddress: string, outcome: string, mcps: number, amount: number, marketId: string) {
+      return app.inject({
+        method: 'POST',
+        url: '/api/orderbook/order',
+        payload: {
+          marketId,
+          gameId: DEFAULT_TEST_GAME_ID,
+          userAddress,
+          outcome,
+          mcps,
+          amount,
+          appSessionId: `p2p-sess-${userAddress}-${Math.random().toString(36).slice(2, 6)}`,
+          appSessionVersion: 1,
+        },
+      });
+    }
+
+    async function resolveMarket(outcome: string) {
+      await app.inject({
+        method: 'POST',
+        url: '/api/oracle/market/close',
+        payload: { gameId: DEFAULT_TEST_GAME_ID, categoryId: DEFAULT_TEST_CATEGORY_ID },
+      });
+      return app.inject({
+        method: 'POST',
+        url: '/api/oracle/outcome',
+        payload: { outcome, gameId: DEFAULT_TEST_GAME_ID, categoryId: DEFAULT_TEST_CATEGORY_ID },
+      });
+    }
+
+    test('settles P2P loser — closeSession with loss to MM', async () => {
+      const marketId = await activateAndOpenMarket();
+
+      await placeP2POrder('0xAlice', 'BALL', 0.60, 6, marketId);
+      await placeP2POrder('0xBob', 'STRIKE', 0.40, 4, marketId);
+
+      (ctx.clearnodeClient.closeSession as jest.Mock).mockClear();
+
+      const res = await resolveMarket('BALL');
+      expect(res.json().success).toBe(true);
+
+      // Bob (STRIKE) is the loser — closeSession should be called
+      expect(ctx.clearnodeClient.closeSession).toHaveBeenCalled();
+    });
+
+    test('settles P2P winner — transfers profit', async () => {
+      const marketId = await activateAndOpenMarket();
+
+      await placeP2POrder('0xAlice', 'BALL', 0.60, 6, marketId);
+      await placeP2POrder('0xBob', 'STRIKE', 0.40, 4, marketId);
+
+      (ctx.clearnodeClient.transfer as jest.Mock).mockClear();
+
+      await resolveMarket('BALL');
+
+      // Alice (BALL) is the winner — should receive profit transfer
+      expect(ctx.clearnodeClient.transfer).toHaveBeenCalled();
+    });
+
+    test('sends P2P_BET_RESULT to winner and loser', async () => {
+      const marketId = await activateAndOpenMarket();
+
+      await placeP2POrder('0xAlice', 'BALL', 0.60, 6, marketId);
+      await placeP2POrder('0xBob', 'STRIKE', 0.40, 4, marketId);
+
+      const sendToSpy = jest.spyOn(ctx.ws, 'sendTo');
+
+      await resolveMarket('BALL');
+
+      // Alice should get WIN
+      const aliceCalls = sendToSpy.mock.calls.filter(([addr]) => addr === '0xAlice');
+      const aliceP2P = aliceCalls.find(([, msg]) => msg.type === 'P2P_BET_RESULT');
+      expect(aliceP2P).toBeDefined();
+      expect(aliceP2P![1]).toMatchObject({ result: 'WIN' });
+
+      // Bob should get LOSS
+      const bobCalls = sendToSpy.mock.calls.filter(([addr]) => addr === '0xBob');
+      const bobP2P = bobCalls.find(([, msg]) => msg.type === 'P2P_BET_RESULT');
+      expect(bobP2P).toBeDefined();
+      expect(bobP2P![1]).toMatchObject({ result: 'LOSS' });
+    });
+
+    test('marks P2P orders as SETTLED after resolution', async () => {
+      const marketId = await activateAndOpenMarket();
+
+      const r1 = await placeP2POrder('0xAlice', 'BALL', 0.60, 6, marketId);
+      const r2 = await placeP2POrder('0xBob', 'STRIKE', 0.40, 4, marketId);
+
+      await resolveMarket('BALL');
+
+      const aliceOrder = ctx.orderBookManager.getOrder(r1.json().orderId);
+      const bobOrder = ctx.orderBookManager.getOrder(r2.json().orderId);
+      expect(aliceOrder?.status).toBe('SETTLED');
+      expect(bobOrder?.status).toBe('SETTLED');
+    });
+
+    test('updates user stats for P2P bets', async () => {
+      const marketId = await activateAndOpenMarket();
+
+      await placeP2POrder('0xAlice', 'BALL', 0.60, 6, marketId);
+      await placeP2POrder('0xBob', 'STRIKE', 0.40, 4, marketId);
+
+      await resolveMarket('BALL');
+
+      const alice = ctx.userTracker.getUser('0xAlice');
+      expect(alice!.totalWins).toBe(1);
+
+      const bob = ctx.userTracker.getUser('0xBob');
+      expect(bob!.totalLosses).toBe(1);
+    });
+
+    test('expires unfilled P2P orders and refunds', async () => {
+      const marketId = await activateAndOpenMarket();
+
+      // Place order that won't match (no counterparty)
+      const r = await placeP2POrder('0xAlice', 'BALL', 0.30, 3, marketId);
+
+      (ctx.clearnodeClient.closeSession as jest.Mock).mockClear();
+
+      await resolveMarket('BALL');
+
+      const order = ctx.orderBookManager.getOrder(r.json().orderId);
+      expect(order?.status).toBe('EXPIRED');
+      // Session should be closed with full refund
+      expect(ctx.clearnodeClient.closeSession).toHaveBeenCalled();
+    });
+
+    test('mixed LMSR + P2P resolution works together', async () => {
+      const marketId = await activateAndOpenMarket();
+
+      // LMSR bet
+      await placeBet('0xCharlie', marketId, 'BALL', 10);
+
+      // P2P bets
+      await placeP2POrder('0xAlice', 'BALL', 0.60, 6, marketId);
+      await placeP2POrder('0xBob', 'STRIKE', 0.40, 4, marketId);
+
+      const res = await resolveMarket('BALL');
+      expect(res.json().success).toBe(true);
+
+      // LMSR winner (Charlie) should have win recorded
+      const charlie = ctx.userTracker.getUser('0xCharlie');
+      expect(charlie!.totalWins).toBe(1);
+
+      // P2P winner (Alice) should have win recorded
+      const alice = ctx.userTracker.getUser('0xAlice');
+      expect(alice!.totalWins).toBe(1);
+    });
+  });
 });

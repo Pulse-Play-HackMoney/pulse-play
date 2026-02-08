@@ -12,6 +12,7 @@ import { PositionTracker } from './modules/position/tracker.js';
 import { GameManager } from './modules/game/manager.js';
 import { TeamManager } from './modules/team/manager.js';
 import { UserTracker } from './modules/user/tracker.js';
+import { OrderBookManager } from './modules/orderbook/manager.js';
 import { ClearnodeClient } from './modules/clearnode/client.js';
 import { OracleService } from './modules/oracle/oracle.js';
 import { WsManager } from './api/ws.js';
@@ -44,6 +45,7 @@ async function main() {
     gameManager: new GameManager(db, marketManager),
     teamManager: new TeamManager(db),
     userTracker: new UserTracker(db),
+    orderBookManager: new OrderBookManager(db),
     clearnodeClient,
     oracle: new OracleService(),
     ws: new WsManager(),

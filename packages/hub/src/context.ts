@@ -5,6 +5,7 @@ import { OracleService } from './modules/oracle/oracle.js';
 import { GameManager } from './modules/game/manager.js';
 import { TeamManager } from './modules/team/manager.js';
 import { UserTracker } from './modules/user/tracker.js';
+import { OrderBookManager } from './modules/orderbook/manager.js';
 import { WsManager } from './api/ws.js';
 import { logger as defaultLogger } from './logger.js';
 import { createTestDb, seedDefaults, type DrizzleDB } from './db/index.js';
@@ -19,6 +20,7 @@ export interface AppContext {
   gameManager: GameManager;
   teamManager: TeamManager;
   userTracker: UserTracker;
+  orderBookManager: OrderBookManager;
   clearnodeClient: ClearnodeClient;
   oracle: OracleService;
   ws: WsManager;
@@ -79,6 +81,7 @@ export function createTestContext(
     gameManager: new GameManager(db, marketManager),
     teamManager: new TeamManager(db),
     userTracker: new UserTracker(db),
+    orderBookManager: new OrderBookManager(db),
     clearnodeClient: mockClearnode,
     oracle: new OracleService(),
     ws: new WsManager(),

@@ -76,6 +76,15 @@ function createMockHubClient() {
     getMMInfo: jest.fn(),
     getPositions: jest.fn(),
     resetBackend: jest.fn(),
+    placeP2POrder: jest.fn().mockResolvedValue({
+      orderId: 'order-1',
+      status: 'OPEN',
+      fills: [],
+      order: { orderId: 'order-1' },
+    }),
+    cancelP2POrder: jest.fn(),
+    getOrderBookDepth: jest.fn(),
+    getUserP2POrders: jest.fn(),
   };
 }
 
@@ -329,6 +338,123 @@ describe('SimulationEngine', () => {
       const counts = engine.getBetCounts();
       // Should have entries for each wallet
       expect(counts.size).toBeGreaterThan(0);
+    });
+  });
+
+  describe('P2P mode', () => {
+    it('places P2P orders instead of LMSR bets in p2p mode', async () => {
+      hubClient.placeP2POrder = jest.fn().mockResolvedValue({
+        orderId: 'order-1',
+        status: 'OPEN',
+        fills: [],
+        order: { orderId: 'order-1' },
+      });
+
+      engine.setConfig({ mode: 'p2p', delayMinMs: 10, delayMaxMs: 20, maxBetsPerWallet: 1 });
+      engine.start('market-1', '0xMM');
+
+      for (let i = 0; i < 5; i++) {
+        jest.advanceTimersByTime(50);
+        await jest.advanceTimersByTimeAsync(50);
+      }
+
+      expect(hubClient.placeP2POrder).toHaveBeenCalled();
+      expect(hubClient.placeBet).not.toHaveBeenCalled();
+    });
+
+    it('emits p2p-order-placed event for resting orders', async () => {
+      hubClient.placeP2POrder = jest.fn().mockResolvedValue({
+        orderId: 'order-1',
+        status: 'OPEN',
+        fills: [],
+        order: { orderId: 'order-1' },
+      });
+
+      engine.setConfig({ mode: 'p2p', delayMinMs: 10, delayMaxMs: 20, maxBetsPerWallet: 1 });
+      engine.start('market-1', '0xMM');
+
+      jest.advanceTimersByTime(50);
+      await jest.advanceTimersByTimeAsync(50);
+
+      const p2pEvents = events.filter((e) => e.type === 'p2p-order-placed');
+      expect(p2pEvents.length).toBeGreaterThan(0);
+      expect(p2pEvents[0].message).toContain('P2P');
+      expect(p2pEvents[0].message).toContain('resting');
+    });
+
+    it('emits p2p-order-filled event when order has fills', async () => {
+      hubClient.placeP2POrder = jest.fn().mockResolvedValue({
+        orderId: 'order-1',
+        status: 'PARTIALLY_FILLED',
+        fills: [{ fillId: 'fill-1', shares: 5, effectivePrice: 0.55, cost: 2.75 }],
+        order: { orderId: 'order-1' },
+      });
+
+      engine.setConfig({ mode: 'p2p', delayMinMs: 10, delayMaxMs: 20, maxBetsPerWallet: 1 });
+      engine.start('market-1', '0xMM');
+
+      jest.advanceTimersByTime(50);
+      await jest.advanceTimersByTimeAsync(50);
+
+      const fillEvents = events.filter((e) => e.type === 'p2p-order-filled');
+      expect(fillEvents.length).toBeGreaterThan(0);
+      expect(fillEvents[0].message).toContain('1 fill');
+    });
+
+    it('emits p2p-order-failed on error', async () => {
+      hubClient.placeP2POrder = jest.fn().mockRejectedValue(new Error('Order rejected'));
+
+      engine.setConfig({ mode: 'p2p', delayMinMs: 10, delayMaxMs: 20, maxBetsPerWallet: 1 });
+      engine.start('market-1', '0xMM');
+
+      jest.advanceTimersByTime(50);
+      await jest.advanceTimersByTimeAsync(50);
+
+      const failEvents = events.filter((e) => e.type === 'p2p-order-failed');
+      expect(failEvents.length).toBeGreaterThan(0);
+      expect(failEvents[0].message).toContain('P2P error');
+    });
+
+    it('uses both LMSR and P2P in mixed mode', async () => {
+      hubClient.placeP2POrder = jest.fn().mockResolvedValue({
+        orderId: 'order-1',
+        status: 'OPEN',
+        fills: [],
+        order: { orderId: 'order-1' },
+      });
+
+      engine.setConfig({ mode: 'mixed', delayMinMs: 10, delayMaxMs: 20, maxBetsPerWallet: 10 });
+
+      // Run many iterations to statistically hit both paths
+      // Mock Math.random to alternate
+      let callCount = 0;
+      const originalRandom = Math.random;
+      Math.random = () => {
+        callCount++;
+        // Alternate deterministically: even calls return 0.3 (p2p), odd return 0.7 (lmsr)
+        return callCount % 2 === 0 ? 0.3 : 0.7;
+      };
+
+      engine.start('market-1', '0xMM');
+
+      for (let i = 0; i < 20; i++) {
+        jest.advanceTimersByTime(50);
+        await jest.advanceTimersByTimeAsync(50);
+      }
+
+      Math.random = originalRandom;
+
+      // In mixed mode, both should be called
+      const hasBet = hubClient.placeBet.mock.calls.length > 0;
+      const hasP2P = hubClient.placeP2POrder.mock.calls.length > 0;
+      expect(hasBet || hasP2P).toBe(true);
+    });
+
+    it('config defaults to lmsr mode', () => {
+      const config = engine.getConfig();
+      expect(config.mode).toBe('lmsr');
+      expect(config.mcpsMin).toBe(0.30);
+      expect(config.mcpsMax).toBe(0.70);
     });
   });
 });

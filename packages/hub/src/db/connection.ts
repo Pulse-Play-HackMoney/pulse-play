@@ -107,12 +107,51 @@ function pushSchema(db: DrizzleDB): void {
     app_session_version INTEGER NOT NULL,
     session_status TEXT NOT NULL DEFAULT 'open',
     session_data TEXT,
+    mode TEXT NOT NULL DEFAULT 'lmsr',
     created_at INTEGER NOT NULL
   )`);
 
   db.run(sql`CREATE INDEX IF NOT EXISTS idx_positions_market ON positions(market_id)`);
   db.run(sql`CREATE INDEX IF NOT EXISTS idx_positions_address ON positions(address)`);
   db.run(sql`CREATE INDEX IF NOT EXISTS idx_positions_session ON positions(app_session_id)`);
+
+  db.run(sql`CREATE TABLE IF NOT EXISTS p2p_orders (
+    order_id TEXT PRIMARY KEY,
+    market_id TEXT NOT NULL REFERENCES markets(id),
+    game_id TEXT NOT NULL REFERENCES games(id),
+    user_address TEXT NOT NULL,
+    outcome TEXT NOT NULL,
+    mcps REAL NOT NULL,
+    amount REAL NOT NULL,
+    filled_amount REAL NOT NULL DEFAULT 0,
+    unfilled_amount REAL NOT NULL,
+    max_shares REAL NOT NULL,
+    filled_shares REAL NOT NULL DEFAULT 0,
+    unfilled_shares REAL NOT NULL,
+    app_session_id TEXT NOT NULL,
+    app_session_version INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'OPEN',
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  )`);
+
+  db.run(sql`CREATE INDEX IF NOT EXISTS idx_p2p_orders_market_outcome_status
+    ON p2p_orders(market_id, outcome, status)`);
+  db.run(sql`CREATE INDEX IF NOT EXISTS idx_p2p_orders_user
+    ON p2p_orders(user_address)`);
+
+  db.run(sql`CREATE TABLE IF NOT EXISTS p2p_fills (
+    fill_id TEXT PRIMARY KEY,
+    order_id TEXT NOT NULL REFERENCES p2p_orders(order_id),
+    counterparty_order_id TEXT NOT NULL REFERENCES p2p_orders(order_id),
+    counterparty_address TEXT NOT NULL,
+    shares REAL NOT NULL,
+    effective_price REAL NOT NULL,
+    cost REAL NOT NULL,
+    filled_at INTEGER NOT NULL
+  )`);
+
+  db.run(sql`CREATE INDEX IF NOT EXISTS idx_p2p_fills_order ON p2p_fills(order_id)`);
 
   db.run(sql`CREATE TABLE IF NOT EXISTS users (
     address TEXT PRIMARY KEY,

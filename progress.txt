@@ -2481,3 +2481,92 @@ Three places failed to set `adminState.gameState`:
 
 ### Files Modified
 - `packages/simulator/src/App.tsx` — All three fixes above
+
+## P2P CLOB (Central Limit Order Book) Implementation Complete
+Date: 2026-02-07
+
+### Overview
+Implemented a full P2P order book alongside the existing LMSR market maker for binary markets (outcomes.length === 2). Users submit limit orders with a max cost per share (MCPS), and the hub's matching engine pairs complementary orders on opposite outcomes.
+
+### Steps Completed (11 total):
+
+**Step 1: Hub Schema + Types**
+- Added `p2p_orders` and `p2p_fills` tables to DB schema
+- Added `mode` column to positions table ('lmsr' | 'p2p')
+- Created P2P type definitions (P2POrder, P2PFill, OrderBookDepth, etc.)
+
+**Step 2: Matching Engine (pure function)**
+- `matchOrder()` — pairs incoming orders with resting orders when combined MCPS >= 1.00
+- Surplus split evenly as price improvement
+- 20 tests
+
+**Step 3: OrderBookManager (DB-backed)**
+- placeOrder, cancelOrder, getDepth, getOrder, getOrdersByUser, getOrdersByMarket
+- getFills, getFilledOrdersForResolution, expireUnfilledOrders, settleOrder
+- Atomic transactions for matching + DB updates
+- 33 tests
+
+**Step 4: AppContext + WS Types + Logger**
+- Added OrderBookManager to AppContext
+- Added 5 WS message types (ORDER_PLACED, ORDER_FILLED, ORDERBOOK_UPDATE, ORDER_CANCELLED, P2P_BET_RESULT)
+- Added 7 P2P log methods
+
+**Step 5: REST API Routes**
+- POST /api/orderbook/order — Place P2P order (validates binary, MCPS range, market status)
+- DELETE /api/orderbook/order/:orderId — Cancel order
+- GET /api/orderbook/depth/:marketId — Order book depth
+- GET /api/orderbook/orders/:address — User's orders
+- 25 tests
+
+**Step 6: Resolution Integration**
+- P2P resolution block after LMSR loop in oracle.routes.ts
+- Losers settled first (MM needs funds), winners get $1/share minus fee
+- Unfilled orders expired with full refund
+- LMSR positions filtered to mode='lmsr' to prevent double-processing
+- 7 tests
+
+**Step 7: Frontend Types + API Client**
+- Added P2P types to frontend types.ts
+- Added 4 API functions (placeP2POrder, cancelP2POrder, getOrderBookDepth, getUserP2POrders)
+- 4 tests
+
+**Step 8: useP2POrder Hook**
+- Mirrors useBet pattern: creates Clearnode session, then submits order
+- Step tracking: idle → creating-session → submitting-order → idle
+- 9 tests
+
+**Step 9: Frontend OrderBook Components**
+- OrderBookTable — Two-sided depth display with real-time WS updates
+- PlaceOrderForm — Outcome selector, MCPS input with match hint, amount presets, max shares display
+- UserOrders — Order list with status badges, fill progress bars, cancel buttons
+- P2PResultToast — Win/loss notification subscribing to P2P_BET_RESULT
+- 33 tests
+
+**Step 10: Game Detail Page Integration**
+- GameBettingArea component with LMSR/OrderBook tab toggle for binary markets
+- Non-binary markets show LMSR only (no toggle)
+- 6 tests
+
+**Step 11: Simulator Integration**
+- HubClient: Added placeP2POrder, cancelP2POrder, getOrderBookDepth, getUserP2POrders
+- SimulationEngine: Added P2P mode (mode: 'lmsr' | 'p2p' | 'mixed'), mcpsMin/mcpsMax config
+- App.tsx: Added :p2p create|cancel|depth|auto|mixed commands
+- Types: Added P2P WS message types, OrderStatus, P2POrder, etc.
+- Formatters: Added formatting for 5 new WS message types and 3 P2P sim event colors
+- 20 new tests
+
+### Test Summary
+- Hub: 530 passed (53 orderbook-specific)
+- Frontend: 383 passed (42 orderbook-specific)
+- Simulator: 162 passed (20 P2P-specific)
+- Total: 1,075 tests passing
+
+### Key Design Decisions
+1. P2P uses same Clearnode session model as LMSR — each order creates a session with MM
+2. Matching is atomic via DB transaction (SQLite single-writer prevents race conditions)
+3. Resolution separates LMSR and P2P paths by position `mode` field
+4. Frontend uses tab toggle in GameBettingArea, only shown for binary markets
+5. Simulator supports three modes: lmsr (default), p2p, mixed
+
+### Branch
+All work on branch `feature/clob` in worktree at `../pulse-play-clob/`

@@ -22,6 +22,10 @@ import {
   getMMInfo,
   requestMMFaucet,
   requestUserFaucet,
+  placeP2POrder,
+  cancelP2POrder,
+  getOrderBookDepth,
+  getUserP2POrders,
   ApiError,
 } from './api';
 import type { BetRequest, MarketResponse, PositionsResponse } from './types';
@@ -663,6 +667,91 @@ describe('api', () => {
         expect.objectContaining({
           body: JSON.stringify({ address: '0xAlice', count: 1 }),
         })
+      );
+    });
+  });
+
+  // ── P2P Order Book ──
+
+  describe('placeP2POrder', () => {
+    it('sends P2P order request and returns response', async () => {
+      const mockResponse = {
+        orderId: 'order-1',
+        status: 'OPEN',
+        fills: [],
+        order: { orderId: 'order-1', status: 'OPEN' },
+      };
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const result = await placeP2POrder({
+        marketId: 'market-1',
+        gameId: 'game-1',
+        userAddress: '0xAlice',
+        outcome: 'BALL',
+        mcps: 0.60,
+        amount: 6,
+        appSessionId: 'sess-1',
+        appSessionVersion: 1,
+      });
+
+      expect(result.orderId).toBe('order-1');
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:3001/api/orderbook/order',
+        expect.objectContaining({ method: 'POST' })
+      );
+    });
+  });
+
+  describe('cancelP2POrder', () => {
+    it('sends DELETE request for order cancellation', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ order: { orderId: 'order-1', status: 'CANCELLED' } }),
+      });
+
+      const result = await cancelP2POrder('order-1');
+      expect(result.order.status).toBe('CANCELLED');
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:3001/api/orderbook/order/order-1',
+        expect.objectContaining({ method: 'DELETE' })
+      );
+    });
+  });
+
+  describe('getOrderBookDepth', () => {
+    it('fetches depth for a market', async () => {
+      const mockDepth = {
+        marketId: 'market-1',
+        outcomes: { BALL: [], STRIKE: [] },
+        updatedAt: Date.now(),
+      };
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockDepth),
+      });
+
+      const result = await getOrderBookDepth('market-1');
+      expect(result.marketId).toBe('market-1');
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:3001/api/orderbook/depth/market-1'
+      );
+    });
+  });
+
+  describe('getUserP2POrders', () => {
+    it('fetches user P2P orders with optional marketId', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ orders: [] }),
+      });
+
+      const result = await getUserP2POrders('0xAlice', 'market-1');
+      expect(result.orders).toEqual([]);
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:3001/api/orderbook/orders/0xAlice?marketId=market-1'
       );
     });
   });

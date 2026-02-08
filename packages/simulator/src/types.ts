@@ -81,6 +81,50 @@ export interface WsGameCreated {
   game: { id: string; sportId: string; status: string };
 }
 
+export interface WsOrderPlaced {
+  type: 'ORDER_PLACED';
+  orderId: string;
+  marketId: string;
+  outcome: string;
+  mcps: number;
+  amount: number;
+  maxShares: number;
+  status: string;
+}
+
+export interface WsOrderFilled {
+  type: 'ORDER_FILLED';
+  orderId: string;
+  fillId: string;
+  counterpartyOrderId: string;
+  shares: number;
+  effectivePrice: number;
+  cost: number;
+}
+
+export interface WsOrderBookUpdate {
+  type: 'ORDERBOOK_UPDATE';
+  marketId: string;
+  outcomes: Record<string, DepthLevel[]>;
+}
+
+export interface WsOrderCancelled {
+  type: 'ORDER_CANCELLED';
+  orderId: string;
+  marketId: string;
+}
+
+export interface WsP2PBetResult {
+  type: 'P2P_BET_RESULT';
+  result: 'WIN' | 'LOSS';
+  orderId: string;
+  marketId: string;
+  payout?: number;
+  profit?: number;
+  loss?: number;
+  refunded?: number;
+}
+
 export type WsMessage =
   | WsOddsUpdate
   | WsMarketStatus
@@ -91,7 +135,12 @@ export type WsMessage =
   | WsStateSync
   | WsSessionSettled
   | WsSessionVersionUpdated
-  | WsGameCreated;
+  | WsGameCreated
+  | WsOrderPlaced
+  | WsOrderFilled
+  | WsOrderBookUpdate
+  | WsOrderCancelled
+  | WsP2PBetResult;
 
 // ── Admin state response ──
 
@@ -221,6 +270,9 @@ export interface SimConfig {
   delayMaxMs: number;
   maxBetsPerWallet: number;
   outcomes: string[];
+  mode: SimMode; // lmsr, p2p, or mixed
+  mcpsMin: number; // min MCPS for P2P orders (0-1)
+  mcpsMax: number; // max MCPS for P2P orders (0-1)
   // Backward compat alias
   ballBias?: number;
 }
@@ -233,12 +285,15 @@ export const DEFAULT_SIM_CONFIG: SimConfig = {
   delayMaxMs: 4000,
   maxBetsPerWallet: 3,
   outcomes: ['BALL', 'STRIKE'],
+  mode: 'lmsr',
+  mcpsMin: 0.30,
+  mcpsMax: 0.70,
 };
 
 export type SimStatus = 'idle' | 'running' | 'stopping';
 
 export interface SimEvent {
-  type: 'bet-placed' | 'bet-failed' | 'bet-rejected' | 'session-error' | 'sim-started' | 'sim-stopped' | 'wallet-funded' | 'fund-error';
+  type: 'bet-placed' | 'bet-failed' | 'bet-rejected' | 'session-error' | 'sim-started' | 'sim-stopped' | 'wallet-funded' | 'fund-error' | 'p2p-order-placed' | 'p2p-order-filled' | 'p2p-order-failed';
   walletIndex: number;
   message: string;
   timestamp: Date;
@@ -261,3 +316,70 @@ export interface SimResults {
   totalPayout: number;
   totalLoss: number;
 }
+
+// ── P2P Order Book Types ──
+
+export type OrderStatus = 'OPEN' | 'PARTIALLY_FILLED' | 'FILLED' | 'CANCELLED' | 'EXPIRED' | 'SETTLED';
+
+export interface P2POrder {
+  orderId: string;
+  marketId: string;
+  gameId: string;
+  userAddress: string;
+  outcome: Outcome;
+  mcps: number;
+  amount: number;
+  filledAmount: number;
+  unfilledAmount: number;
+  maxShares: number;
+  filledShares: number;
+  unfilledShares: number;
+  appSessionId: string;
+  appSessionVersion: number;
+  status: OrderStatus;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface P2PFill {
+  fillId: string;
+  orderId: string;
+  counterpartyOrderId: string;
+  counterpartyAddress: string;
+  shares: number;
+  effectivePrice: number;
+  cost: number;
+  filledAt: number;
+}
+
+export interface DepthLevel {
+  price: number;
+  shares: number;
+  orderCount: number;
+}
+
+export interface OrderBookDepth {
+  marketId: string;
+  outcomes: Record<string, DepthLevel[]>;
+  updatedAt: number;
+}
+
+export interface P2POrderRequest {
+  marketId: string;
+  gameId: string;
+  userAddress: string;
+  outcome: string;
+  mcps: number;
+  amount: number;
+  appSessionId: string;
+  appSessionVersion: number;
+}
+
+export interface P2POrderResponse {
+  orderId: string;
+  status: OrderStatus;
+  fills: P2PFill[];
+  order: P2POrder;
+}
+
+export type SimMode = 'lmsr' | 'p2p' | 'mixed';

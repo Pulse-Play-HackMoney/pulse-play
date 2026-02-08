@@ -1,7 +1,7 @@
 import type { WalletManager } from './wallet-manager.js';
 import type { HubClient } from './hub-client.js';
 import type { ClearnodePool } from './clearnode-pool.js';
-import type { SimConfig, SimStatus, SimEvent, Outcome } from '../types.js';
+import type { SimConfig, SimStatus, SimEvent, Outcome, SimMode } from '../types.js';
 import { DEFAULT_SIM_CONFIG } from '../types.js';
 import { toMicroUnits } from '../utils/units.js';
 import type { Address } from 'viem';
@@ -130,6 +130,37 @@ export class SimulationEngine {
     const currentBets = this.betCounts.get(walletIndex) ?? 0;
     if (currentBets >= wallet.maxBets) return;
 
+    // Determine mode for this bet
+    const mode = this.resolveMode();
+
+    if (mode === 'p2p') {
+      await this.executeP2POrder(walletIndex, marketId, mmAddress);
+    } else {
+      await this.executeLmsrBet(walletIndex, marketId, mmAddress);
+    }
+
+    // Schedule next bet if under limit and still running
+    const updatedBets = this.betCounts.get(walletIndex) ?? 0;
+    if (updatedBets < wallet.maxBets && this.status === 'running') {
+      const delay = this.config.delayMinMs + Math.random() * (this.config.delayMaxMs - this.config.delayMinMs);
+      this.scheduleNextBet(walletIndex, marketId, mmAddress, delay);
+    }
+  }
+
+  /** Resolve mode: for 'mixed', randomly choose lmsr or p2p. */
+  private resolveMode(): 'lmsr' | 'p2p' {
+    if (this.config.mode === 'mixed') {
+      return Math.random() < 0.5 ? 'lmsr' : 'p2p';
+    }
+    return this.config.mode === 'p2p' ? 'p2p' : 'lmsr';
+  }
+
+  private async executeLmsrBet(walletIndex: number, marketId: string, mmAddress: string): Promise<void> {
+    const wallet = this.deps.walletManager.get(walletIndex);
+    if (!wallet || !wallet.side) return;
+
+    const currentBets = this.betCounts.get(walletIndex) ?? 0;
+
     // Random bet amount within config range
     const amount = this.config.betAmountMin + Math.random() * (this.config.betAmountMax - this.config.betAmountMin);
     const roundedAmount = Math.round(amount * 100) / 100;
@@ -198,12 +229,74 @@ export class SimulationEngine {
         timestamp: new Date(),
       });
     }
+  }
 
-    // Schedule next bet if under limit and still running
-    const updatedBets = this.betCounts.get(walletIndex) ?? 0;
-    if (updatedBets < wallet.maxBets && this.status === 'running') {
-      const delay = this.config.delayMinMs + Math.random() * (this.config.delayMaxMs - this.config.delayMinMs);
-      this.scheduleNextBet(walletIndex, marketId, mmAddress, delay);
+  private async executeP2POrder(walletIndex: number, marketId: string, mmAddress: string): Promise<void> {
+    const wallet = this.deps.walletManager.get(walletIndex);
+    if (!wallet || !wallet.side) return;
+
+    const currentBets = this.betCounts.get(walletIndex) ?? 0;
+
+    // Random amount and MCPS within config range
+    const amount = this.config.betAmountMin + Math.random() * (this.config.betAmountMax - this.config.betAmountMin);
+    const roundedAmount = Math.round(amount * 100) / 100;
+    const mcps = this.config.mcpsMin + Math.random() * (this.config.mcpsMax - this.config.mcpsMin);
+    const roundedMcps = Math.round(mcps * 100) / 100;
+
+    try {
+      // Step 1: Create app session
+      const session = await this.deps.clearnodePool.createAppSession(
+        wallet.address as Address,
+        mmAddress as Address,
+        toMicroUnits(roundedAmount),
+      );
+
+      // Step 2: Place P2P order via hub
+      // Need gameId — derive from marketId format (e.g., "game-1-pitching-1" → "game-1")
+      const gameId = marketId.split('-').slice(0, 2).join('-');
+
+      const result = await this.deps.hubClient.placeP2POrder({
+        marketId,
+        gameId,
+        userAddress: wallet.address,
+        outcome: wallet.side,
+        mcps: roundedMcps,
+        amount: roundedAmount,
+        appSessionId: session.appSessionId,
+        appSessionVersion: session.version,
+      });
+
+      this.betCounts.set(walletIndex, currentBets + 1);
+      this.deps.walletManager.incrementBetCount(walletIndex);
+
+      const fillCount = result.fills.length;
+      const fillMsg = fillCount > 0 ? ` (${fillCount} fill${fillCount > 1 ? 's' : ''})` : ' (resting)';
+
+      this.emit({
+        type: fillCount > 0 ? 'p2p-order-filled' : 'p2p-order-placed',
+        walletIndex,
+        message: `Wallet #${walletIndex} P2P $${roundedAmount.toFixed(2)} on ${wallet.side} @${roundedMcps.toFixed(2)}${fillMsg}`,
+        timestamp: new Date(),
+      });
+
+      // Refresh wallet balance (non-critical)
+      try {
+        const balance = await this.deps.clearnodePool.getBalance(wallet.address as Address);
+        this.deps.walletManager.updateBalance(walletIndex, balance);
+      } catch {
+        // non-critical
+      }
+    } catch (err) {
+      const isSessionError = (err as Error).message?.includes('app_session') ||
+        (err as Error).message?.includes('WebSocket') ||
+        (err as Error).message?.includes('Auth');
+
+      this.emit({
+        type: isSessionError ? 'session-error' : 'p2p-order-failed',
+        walletIndex,
+        message: `Wallet #${walletIndex} P2P error: ${(err as Error).message}`,
+        timestamp: new Date(),
+      });
     }
   }
 

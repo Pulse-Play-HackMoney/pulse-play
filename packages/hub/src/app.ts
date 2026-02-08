@@ -15,6 +15,7 @@ import { registerSportRoutes } from './api/sport.routes.js';
 import { registerGameRoutes } from './api/game.routes.js';
 import { registerUserRoutes } from './api/user.routes.js';
 import { registerTeamRoutes } from './api/team.routes.js';
+import { registerOrderBookRoutes } from './api/orderbook.routes.js';
 import type { WsStateSync } from './api/types.js';
 import { getPrices } from './modules/lmsr/engine.js';
 import { eq } from 'drizzle-orm';
@@ -132,6 +133,7 @@ export async function buildApp(ctx: AppContext) {
   registerGameRoutes(app, ctx);
   registerTeamRoutes(app, ctx);
   registerUserRoutes(app, ctx);
+  registerOrderBookRoutes(app, ctx);
 
   return app;
 }

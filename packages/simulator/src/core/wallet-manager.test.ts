@@ -144,6 +144,9 @@ describe('WalletManager', () => {
       delayMinMs: 1000,
       delayMaxMs: 3000,
       maxBetsPerWallet: 3,
+      mode: 'lmsr',
+      mcpsMin: 0.30,
+      mcpsMax: 0.70,
     };
 
     it('assigns BALL or STRIKE to every wallet', () => {

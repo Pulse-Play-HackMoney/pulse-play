@@ -125,6 +125,9 @@ export function getSimEventColor(type: SimEvent['type']): string {
     case 'sim-stopped': return 'cyan';
     case 'wallet-funded': return 'green';
     case 'fund-error': return 'red';
+    case 'p2p-order-placed': return 'green';
+    case 'p2p-order-filled': return 'cyan';
+    case 'p2p-order-failed': return 'red';
     default: return 'white';
   }
 }
@@ -154,6 +157,22 @@ export function formatWsMessage(msg: WsMessage): string {
       return `${truncateAddress(msg.address)} session ${truncateAddress(msg.appSessionId)} settled`;
     case 'SESSION_VERSION_UPDATED':
       return `${truncateAddress(msg.appSessionId)} → v${msg.version}`;
+    case 'ORDER_PLACED':
+      return `${msg.outcome} @${msg.mcps.toFixed(2)} ${formatDollars(msg.amount)} (${msg.status})`;
+    case 'ORDER_FILLED':
+      return `Fill ${msg.shares.toFixed(2)} shares @${msg.effectivePrice.toFixed(2)}`;
+    case 'ORDERBOOK_UPDATE': {
+      const sides = Object.entries(msg.outcomes).map(
+        ([outcome, levels]) => `${outcome}: ${levels.length} levels`,
+      );
+      return sides.join(', ');
+    }
+    case 'ORDER_CANCELLED':
+      return `Order ${truncateAddress(msg.orderId)} cancelled`;
+    case 'P2P_BET_RESULT':
+      return msg.result === 'WIN'
+        ? `P2P WIN $${msg.payout?.toFixed(2)}`
+        : `P2P LOSS $${msg.loss?.toFixed(2)}`;
     default:
       return JSON.stringify(msg);
   }

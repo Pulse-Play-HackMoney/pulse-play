@@ -7,6 +7,10 @@ import type {
   Position,
   MarketSummary,
   GameSummary,
+  P2POrderRequest,
+  P2POrderResponse,
+  P2POrder,
+  OrderBookDepth,
 } from '../types.js';
 
 export interface HubClientConfig {
@@ -135,10 +139,42 @@ export class HubClient {
     return this.post('/api/admin/reset', {});
   }
 
+  // ── P2P Order Book ──
+
+  /** Place a P2P order. */
+  async placeP2POrder(params: P2POrderRequest): Promise<P2POrderResponse> {
+    return this.post<P2POrderResponse>('/api/orderbook/order', params);
+  }
+
+  /** Cancel a P2P order. */
+  async cancelP2POrder(orderId: string): Promise<{ order: P2POrder }> {
+    return this.delete(`/api/orderbook/order/${orderId}`);
+  }
+
+  /** Get order book depth for a market. */
+  async getOrderBookDepth(marketId: string): Promise<OrderBookDepth> {
+    return this.get<OrderBookDepth>(`/api/orderbook/depth/${marketId}`);
+  }
+
+  /** Get user's P2P orders. */
+  async getUserP2POrders(address: string, marketId?: string): Promise<{ orders: P2POrder[] }> {
+    const qs = marketId ? `?marketId=${marketId}` : '';
+    return this.get(`/api/orderbook/orders/${address}${qs}`);
+  }
+
   // ── Internal helpers ──
 
   private async get<T>(path: string): Promise<T> {
     const response = await fetch(`${this.restUrl}${path}`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(this.extractErrorMessage(path, response.status, text));
+    }
+    return response.json() as Promise<T>;
+  }
+
+  private async delete<T>(path: string): Promise<T> {
+    const response = await fetch(`${this.restUrl}${path}`, { method: 'DELETE' });
     if (!response.ok) {
       const text = await response.text();
       throw new Error(this.extractErrorMessage(path, response.status, text));

@@ -251,5 +251,90 @@ describe('formatters', () => {
       };
       expect(formatWsMessage(msg)).toBe('0x1234..5678 session 0xABCD..EF12 settled');
     });
+
+    it('formats ORDER_PLACED', () => {
+      const msg: WsMessage = {
+        type: 'ORDER_PLACED',
+        orderId: 'order-1',
+        marketId: 'market-1',
+        outcome: 'BALL',
+        mcps: 0.60,
+        amount: 6,
+        maxShares: 10,
+        status: 'OPEN',
+      };
+      expect(formatWsMessage(msg)).toBe('BALL @0.60 $6.00 (OPEN)');
+    });
+
+    it('formats ORDER_FILLED', () => {
+      const msg: WsMessage = {
+        type: 'ORDER_FILLED',
+        orderId: 'order-1',
+        fillId: 'fill-1',
+        counterpartyOrderId: 'order-2',
+        shares: 5,
+        effectivePrice: 0.55,
+        cost: 2.75,
+      };
+      expect(formatWsMessage(msg)).toBe('Fill 5.00 shares @0.55');
+    });
+
+    it('formats ORDERBOOK_UPDATE', () => {
+      const msg: WsMessage = {
+        type: 'ORDERBOOK_UPDATE',
+        marketId: 'market-1',
+        outcomes: {
+          BALL: [{ price: 0.60, shares: 10, orderCount: 2 }],
+          STRIKE: [],
+        },
+      };
+      expect(formatWsMessage(msg)).toBe('BALL: 1 levels, STRIKE: 0 levels');
+    });
+
+    it('formats ORDER_CANCELLED', () => {
+      const msg: WsMessage = {
+        type: 'ORDER_CANCELLED',
+        orderId: '0xABCDEF1234567890ABCDEF1234567890ABCDEF12',
+        marketId: 'market-1',
+      };
+      expect(formatWsMessage(msg)).toBe('Order 0xABCD..EF12 cancelled');
+    });
+
+    it('formats P2P_BET_RESULT WIN', () => {
+      const msg: WsMessage = {
+        type: 'P2P_BET_RESULT',
+        result: 'WIN',
+        orderId: 'order-1',
+        marketId: 'market-1',
+        payout: 12.50,
+        profit: 6.50,
+      };
+      expect(formatWsMessage(msg)).toBe('P2P WIN $12.50');
+    });
+
+    it('formats P2P_BET_RESULT LOSS', () => {
+      const msg: WsMessage = {
+        type: 'P2P_BET_RESULT',
+        result: 'LOSS',
+        orderId: 'order-1',
+        marketId: 'market-1',
+        loss: 8.00,
+      };
+      expect(formatWsMessage(msg)).toBe('P2P LOSS $8.00');
+    });
+  });
+
+  describe('getSimEventColor - P2P events', () => {
+    it('returns green for p2p-order-placed', () => {
+      expect(getSimEventColor('p2p-order-placed')).toBe('green');
+    });
+
+    it('returns cyan for p2p-order-filled', () => {
+      expect(getSimEventColor('p2p-order-filled')).toBe('cyan');
+    });
+
+    it('returns red for p2p-order-failed', () => {
+      expect(getSimEventColor('p2p-order-failed')).toBe('red');
+    });
   });
 });

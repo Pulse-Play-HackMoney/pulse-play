@@ -1,4 +1,5 @@
 import type { Outcome } from '../lmsr/types.js';
+import type { PositionMode } from '../orderbook/types.js';
 
 export type SessionStatus = 'open' | 'settling' | 'settled';
 
@@ -13,5 +14,6 @@ export interface Position {
   appSessionVersion: number;
   sessionStatus: SessionStatus;
   sessionData?: string;
+  mode?: PositionMode;
   timestamp: number;
 }

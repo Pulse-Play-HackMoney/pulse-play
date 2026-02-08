@@ -23,6 +23,10 @@ import type {
   UserStats,
   Settlement,
   Position,
+  P2POrderRequest,
+  P2POrderResponse,
+  P2POrder,
+  OrderBookDepth,
 } from './types';
 
 // API Error class
@@ -364,4 +368,33 @@ export async function requestUserFaucet(address: string, count = 1): Promise<Use
     body: JSON.stringify({ address, count }),
   });
   return handleResponse<UserFaucetResponse>(response);
+}
+
+// ── P2P Order Book Endpoints ──
+
+export async function placeP2POrder(request: P2POrderRequest): Promise<P2POrderResponse> {
+  const response = await fetch(`${HUB_REST_URL}/api/orderbook/order`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  return handleResponse<P2POrderResponse>(response);
+}
+
+export async function cancelP2POrder(orderId: string): Promise<{ order: P2POrder }> {
+  const response = await fetch(`${HUB_REST_URL}/api/orderbook/order/${orderId}`, {
+    method: 'DELETE',
+  });
+  return handleResponse(response);
+}
+
+export async function getOrderBookDepth(marketId: string): Promise<OrderBookDepth> {
+  const response = await fetch(`${HUB_REST_URL}/api/orderbook/depth/${marketId}`);
+  return handleResponse<OrderBookDepth>(response);
+}
+
+export async function getUserP2POrders(address: string, marketId?: string): Promise<{ orders: P2POrder[] }> {
+  const qs = marketId ? `?marketId=${marketId}` : '';
+  const response = await fetch(`${HUB_REST_URL}/api/orderbook/orders/${address}${qs}`);
+  return handleResponse(response);
 }

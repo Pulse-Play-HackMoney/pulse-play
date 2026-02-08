@@ -267,6 +267,57 @@ export const logger = {
     write(`${INDENT}${DIM}├${RESET} ${a} profit transfer ${amt}`);
   },
 
+  // ── P2P Order Book ───────────────────────────────────────────────────
+
+  orderPlaced(address: string, outcome: string, mcps: number, amount: number, orderId: string): void {
+    if (silent) return;
+    const a = `${MAGENTA}${addr(address)}${RESET}`;
+    const out = `${BOLD}${WHITE}${outcome}${RESET}`;
+    const amt = `${GREEN}$${amount.toFixed(2)}${RESET}`;
+    const price = `${CYAN}@${(mcps * 100).toFixed(0)}¢${RESET}`;
+    write(`${INDENT}${DIM}├${RESET} ${a} P2P order ${amt} on ${out} ${price} ${DIM}(${orderId.slice(0, 8)}...)${RESET}`);
+  },
+
+  orderFilled(orderId: string, shares: number, price: number, counterparty: string): void {
+    if (silent) return;
+    const cp = `${MAGENTA}${addr(counterparty)}${RESET}`;
+    const sh = `${GREEN}${shares.toFixed(2)}${RESET} shares`;
+    const pr = `${CYAN}@${(price * 100).toFixed(1)}¢${RESET}`;
+    write(`${INDENT}${DIM}├${RESET} Fill ${sh} ${pr} vs ${cp} ${DIM}(${orderId.slice(0, 8)}...)${RESET}`);
+  },
+
+  orderCancelled(orderId: string, address: string): void {
+    if (silent) return;
+    const a = `${MAGENTA}${addr(address)}${RESET}`;
+    write(`${INDENT}${DIM}├${RESET} ${YELLOW}Cancelled${RESET} ${a} order ${DIM}${orderId.slice(0, 8)}...${RESET}`);
+  },
+
+  orderExpired(orderId: string): void {
+    if (silent) return;
+    write(`${INDENT}${DIM}├${RESET} ${DIM}Expired${RESET} order ${DIM}${orderId.slice(0, 8)}...${RESET}`);
+  },
+
+  p2pResolutionStart(marketId: string, filledCount: number): void {
+    if (silent) return;
+    const mid = `${BLUE}${marketId}${RESET}`;
+    write(`${INDENT}${DIM}├${RESET} P2P resolution ${mid}: ${filledCount} filled orders`);
+  },
+
+  p2pLoserSettled(address: string, loss: number): void {
+    if (silent) return;
+    const a = `${MAGENTA}${addr(address)}${RESET}`;
+    const amt = `${RED}$${loss.toFixed(2)}${RESET}`;
+    write(`${INDENT}${DIM}├${RESET} ${a} P2P ${RED}LOSS${RESET} ${amt}`);
+  },
+
+  p2pWinnerSettled(address: string, payout: number, profit: number): void {
+    if (silent) return;
+    const a = `${MAGENTA}${addr(address)}${RESET}`;
+    const pay = `${GREEN}$${payout.toFixed(2)}${RESET}`;
+    const prof = `${GREEN}+$${profit.toFixed(2)}${RESET}`;
+    write(`${INDENT}${DIM}├${RESET} ${a} P2P ${GREEN}WIN${RESET} ${pay} (profit: ${prof})`);
+  },
+
   // ── Errors ─────────────────────────────────────────────────────────────
 
   error(context: string, err: unknown): void {

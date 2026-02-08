@@ -39,7 +39,23 @@ export interface SessionDataV3 {
   timestamp: number;
 }
 
-export type SessionData = SessionDataV1 | SessionDataV2 | SessionDataV3;
+// ── V3-P2P: Hub settles P2P order — resolution ──
+
+export interface SessionDataV3P2P {
+  v: 3;
+  mode: 'p2p';
+  resolution: Outcome;
+  result: 'WIN' | 'LOSS';
+  orderId: string;
+  filledShares: number;
+  filledCost: number;
+  payout: number;
+  profit: number;
+  refunded: number;
+  timestamp: number;
+}
+
+export type SessionData = SessionDataV1 | SessionDataV2 | SessionDataV3 | SessionDataV3P2P;
 
 /** Encode session data for Clearnode transport. */
 export function encodeSessionData(data: SessionData): string {

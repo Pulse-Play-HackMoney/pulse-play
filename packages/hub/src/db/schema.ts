@@ -80,11 +80,52 @@ export const positions = sqliteTable('positions', {
   appSessionVersion: integer('app_session_version').notNull(),
   sessionStatus: text('session_status').notNull().default('open'),
   sessionData: text('session_data'),
+  mode: text('mode').notNull().default('lmsr'), // 'lmsr' | 'p2p'
   createdAt: integer('created_at').notNull(),
 }, (table) => [
   index('idx_positions_market').on(table.marketId),
   index('idx_positions_address').on(table.address),
   index('idx_positions_session').on(table.appSessionId),
+]);
+
+// ── P2P Orders ──────────────────────────────────────────────────────────────
+
+export const p2pOrders = sqliteTable('p2p_orders', {
+  orderId: text('order_id').primaryKey(),
+  marketId: text('market_id').notNull().references(() => markets.id),
+  gameId: text('game_id').notNull().references(() => games.id),
+  userAddress: text('user_address').notNull(),
+  outcome: text('outcome').notNull(),
+  mcps: real('mcps').notNull(),
+  amount: real('amount').notNull(),
+  filledAmount: real('filled_amount').notNull().default(0),
+  unfilledAmount: real('unfilled_amount').notNull(),
+  maxShares: real('max_shares').notNull(),
+  filledShares: real('filled_shares').notNull().default(0),
+  unfilledShares: real('unfilled_shares').notNull(),
+  appSessionId: text('app_session_id').notNull(),
+  appSessionVersion: integer('app_session_version').notNull(),
+  status: text('status').notNull().default('OPEN'),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+}, (table) => [
+  index('idx_p2p_orders_market_outcome_status').on(table.marketId, table.outcome, table.status),
+  index('idx_p2p_orders_user').on(table.userAddress),
+]);
+
+// ── P2P Fills ───────────────────────────────────────────────────────────────
+
+export const p2pFills = sqliteTable('p2p_fills', {
+  fillId: text('fill_id').primaryKey(),
+  orderId: text('order_id').notNull().references(() => p2pOrders.orderId),
+  counterpartyOrderId: text('counterparty_order_id').notNull().references(() => p2pOrders.orderId),
+  counterpartyAddress: text('counterparty_address').notNull(),
+  shares: real('shares').notNull(),
+  effectivePrice: real('effective_price').notNull(),
+  cost: real('cost').notNull(),
+  filledAt: integer('filled_at').notNull(),
+}, (table) => [
+  index('idx_p2p_fills_order').on(table.orderId),
 ]);
 
 // ── Users ───────────────────────────────────────────────────────────────────

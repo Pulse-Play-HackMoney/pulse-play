@@ -5,9 +5,7 @@ import { useParams } from 'next/navigation';
 import { getGame } from '@/lib/api';
 import { useWebSocket } from '@/providers/WebSocketProvider';
 import { SelectedMarketProvider } from '@/providers/SelectedMarketProvider';
-import { GameHeader, MarketSelector } from '@/components/games';
-import { OddsDisplay, BetForm, PositionList } from '@/components/bettor';
-import { AccountBalanceCard } from '@/components/account';
+import { GameHeader, MarketSelector, GameBettingArea } from '@/components/games';
 import type { Game, MarketData, WsMessage } from '@/lib/types';
 
 export default function GameDetailPage() {
@@ -90,16 +88,7 @@ export default function GameDetailPage() {
 
       {activeMarket ? (
         <SelectedMarketProvider marketId={activeMarket.id}>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              <OddsDisplay />
-              <BetForm />
-            </div>
-            <div className="space-y-6">
-              <AccountBalanceCard />
-              <PositionList />
-            </div>
-          </div>
+          <GameBettingArea gameId={gameId} />
         </SelectedMarketProvider>
       ) : selectedCategory ? (
         <div className="bg-surface-raised border border-border rounded-lg p-8 text-center" data-testid="no-market-message">

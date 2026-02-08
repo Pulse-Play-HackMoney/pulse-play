@@ -179,6 +179,7 @@ describe('Admin Routes', () => {
         appSessionId: 'sess1',
         appSessionVersion: 1,
         sessionStatus: 'open',
+        mode: 'lmsr',
         timestamp: 1234567890,
       });
     });

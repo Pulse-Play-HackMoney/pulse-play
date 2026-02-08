@@ -112,7 +112,12 @@ export type WsMessageType =
   | 'SESSION_SETTLED'
   | 'SESSION_VERSION_UPDATED'
   | 'CONFIG_UPDATED'
-  | 'GAME_CREATED';
+  | 'GAME_CREATED'
+  | 'ORDER_PLACED'
+  | 'ORDER_FILLED'
+  | 'ORDERBOOK_UPDATE'
+  | 'ORDER_CANCELLED'
+  | 'P2P_BET_RESULT';
 
 export interface WsOddsUpdate {
   type: 'ODDS_UPDATE';
@@ -210,6 +215,50 @@ export interface WsGameCreated {
   game: { id: string; sportId: string; status: string };
 }
 
+export interface WsOrderPlaced {
+  type: 'ORDER_PLACED';
+  orderId: string;
+  marketId: string;
+  outcome: string;
+  mcps: number;
+  amount: number;
+  maxShares: number;
+  status: string;
+}
+
+export interface WsOrderFilled {
+  type: 'ORDER_FILLED';
+  orderId: string;
+  fillId: string;
+  counterpartyOrderId: string;
+  shares: number;
+  effectivePrice: number;
+  cost: number;
+}
+
+export interface WsOrderBookUpdate {
+  type: 'ORDERBOOK_UPDATE';
+  marketId: string;
+  outcomes: Record<string, Array<{ price: number; shares: number; orderCount: number }>>;
+}
+
+export interface WsOrderCancelled {
+  type: 'ORDER_CANCELLED';
+  orderId: string;
+  marketId: string;
+}
+
+export interface WsP2PBetResult {
+  type: 'P2P_BET_RESULT';
+  result: 'WIN' | 'LOSS';
+  orderId: string;
+  marketId: string;
+  payout?: number;
+  profit?: number;
+  loss?: number;
+  refunded?: number;
+}
+
 export type WsMessage =
   | WsOddsUpdate
   | WsMarketStatus
@@ -221,4 +270,9 @@ export type WsMessage =
   | WsSessionSettled
   | WsSessionVersionUpdated
   | WsConfigUpdated
-  | WsGameCreated;
+  | WsGameCreated
+  | WsOrderPlaced
+  | WsOrderFilled
+  | WsOrderBookUpdate
+  | WsOrderCancelled
+  | WsP2PBetResult;

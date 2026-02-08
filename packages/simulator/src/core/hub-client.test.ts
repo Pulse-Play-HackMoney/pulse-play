@@ -320,4 +320,71 @@ describe('HubClient', () => {
       await expect(client.getState()).rejects.toThrow('Hub /api/admin/state failed (500): Internal Server Error');
     });
   });
+
+  // ── P2P Order Book Methods ──
+
+  describe('placeP2POrder', () => {
+    it('posts to /api/orderbook/order and returns response', async () => {
+      const orderResponse = { orderId: 'order-1', status: 'OPEN', fills: [], order: {} };
+      mockFetch.mockResolvedValue(mockOk(orderResponse));
+
+      const result = await client.placeP2POrder({
+        marketId: 'market-1',
+        gameId: 'game-1',
+        userAddress: '0xABC',
+        outcome: 'BALL',
+        mcps: 0.60,
+        amount: 6,
+        appSessionId: '0xSESSION',
+        appSessionVersion: 1,
+      });
+
+      expect(result).toEqual(orderResponse);
+      expect(mockFetch).toHaveBeenCalledWith('http://localhost:3001/api/orderbook/order', expect.objectContaining({
+        method: 'POST',
+      }));
+    });
+  });
+
+  describe('cancelP2POrder', () => {
+    it('sends DELETE to /api/orderbook/order/:orderId', async () => {
+      mockFetch.mockResolvedValue(mockOk({ order: { orderId: 'order-1', status: 'CANCELLED' } }));
+
+      const result = await client.cancelP2POrder('order-1');
+
+      expect(result.order.status).toBe('CANCELLED');
+      expect(mockFetch).toHaveBeenCalledWith('http://localhost:3001/api/orderbook/order/order-1', { method: 'DELETE' });
+    });
+  });
+
+  describe('getOrderBookDepth', () => {
+    it('fetches depth for a market', async () => {
+      const depth = { marketId: 'market-1', outcomes: { BALL: [{ price: 0.60, shares: 10, orderCount: 2 }] }, updatedAt: 123 };
+      mockFetch.mockResolvedValue(mockOk(depth));
+
+      const result = await client.getOrderBookDepth('market-1');
+
+      expect(result.marketId).toBe('market-1');
+      expect(mockFetch).toHaveBeenCalledWith('http://localhost:3001/api/orderbook/depth/market-1');
+    });
+  });
+
+  describe('getUserP2POrders', () => {
+    it('fetches user orders', async () => {
+      mockFetch.mockResolvedValue(mockOk({ orders: [{ orderId: 'order-1' }] }));
+
+      const result = await client.getUserP2POrders('0xABC');
+
+      expect(result.orders).toHaveLength(1);
+      expect(mockFetch).toHaveBeenCalledWith('http://localhost:3001/api/orderbook/orders/0xABC');
+    });
+
+    it('includes marketId query param when provided', async () => {
+      mockFetch.mockResolvedValue(mockOk({ orders: [] }));
+
+      await client.getUserP2POrders('0xABC', 'market-5');
+
+      expect(mockFetch).toHaveBeenCalledWith('http://localhost:3001/api/orderbook/orders/0xABC?marketId=market-5');
+    });
+  });
 });

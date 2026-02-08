@@ -542,6 +542,87 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
           break;
         }
 
+        case 'p2p': {
+          const sub = parts[1]?.toLowerCase();
+          if (sub === 'create') {
+            // :p2p create <walletIndex> <outcome> <amount> <mcps>
+            const wIdx = parseInt(parts[2], 10);
+            const outcome = parts[3]?.toUpperCase();
+            const amount = parseFloat(parts[4]);
+            const mcps = parseFloat(parts[5]);
+
+            if (!wIdx || !outcome || isNaN(amount) || isNaN(mcps)) {
+              showStatus('Usage: :p2p create <wallet#> <outcome> <amount> <mcps>');
+              break;
+            }
+
+            const wallet = walletManager.get(wIdx);
+            if (!wallet) { showStatus(`Wallet #${wIdx} not found`); break; }
+
+            const mmInfo = await hubClient.getMMInfo();
+            setLoadingMessage('Creating P2P session...');
+            const session = await clearnodePool.createAppSession(
+              wallet.address,
+              mmInfo.address as `0x${string}`,
+              (Math.round(amount * 1_000_000)).toString(),
+            );
+
+            setLoadingMessage('Placing P2P order...');
+            const gameId = currentGameId ?? '';
+            const marketId = adminState?.market?.id ?? '';
+            const result = await hubClient.placeP2POrder({
+              marketId,
+              gameId,
+              userAddress: wallet.address,
+              outcome,
+              mcps,
+              amount,
+              appSessionId: session.appSessionId,
+              appSessionVersion: session.version,
+            });
+            setLoadingMessage(null);
+
+            const fillMsg = result.fills.length > 0 ? ` (${result.fills.length} fills)` : ' (resting)';
+            addEvent('P2P', `Order ${result.orderId}: ${outcome} @${mcps} $${amount}${fillMsg}`);
+            showStatus(`P2P order placed: ${result.orderId}`);
+          } else if (sub === 'cancel') {
+            // :p2p cancel <orderId>
+            const orderId = parts[2];
+            if (!orderId) { showStatus('Usage: :p2p cancel <orderId>'); break; }
+
+            await hubClient.cancelP2POrder(orderId);
+            addEvent('P2P', `Order ${orderId} cancelled`);
+            showStatus(`Order ${orderId} cancelled`);
+          } else if (sub === 'depth') {
+            // :p2p depth
+            const marketId = adminState?.market?.id;
+            if (!marketId) { showStatus('No active market'); break; }
+
+            const depth = await hubClient.getOrderBookDepth(marketId);
+            for (const [outcome, levels] of Object.entries(depth.outcomes)) {
+              if (levels.length === 0) {
+                addEvent('P2P', `${outcome}: empty`);
+              } else {
+                for (const lvl of levels) {
+                  addEvent('P2P', `${outcome}: @${lvl.price.toFixed(2)} ${lvl.shares.toFixed(1)} shares (${lvl.orderCount} orders)`);
+                }
+              }
+            }
+            showStatus(`Order book depth for ${marketId}`);
+          } else if (sub === 'auto') {
+            // :p2p auto — switch sim mode to p2p
+            simEngine.setConfig({ mode: 'p2p' });
+            showStatus('Simulation mode set to P2P');
+          } else if (sub === 'mixed') {
+            // :p2p mixed — switch sim mode to mixed
+            simEngine.setConfig({ mode: 'mixed' });
+            showStatus('Simulation mode set to mixed (LMSR + P2P)');
+          } else {
+            showStatus('Usage: :p2p create|cancel|depth|auto|mixed');
+          }
+          break;
+        }
+
         case 'quit':
         case 'q': {
           simEngine.stop();
@@ -949,6 +1030,13 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
             })
             .catch(() => { /* non-fatal */ });
         }
+        break;
+      // P2P messages — logged via addEvent, no additional state update needed
+      case 'ORDER_PLACED':
+      case 'ORDER_FILLED':
+      case 'ORDERBOOK_UPDATE':
+      case 'ORDER_CANCELLED':
+      case 'P2P_BET_RESULT':
         break;
     }
   }, [walletManager, clearnodePool, refreshMMBalance]);
