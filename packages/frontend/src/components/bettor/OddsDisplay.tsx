@@ -15,10 +15,11 @@ function getColor(index: number) {
 }
 
 interface OddsDisplayProps {
+  volume?: number;
   className?: string;
 }
 
-export function OddsDisplay({ className = '' }: OddsDisplayProps) {
+export function OddsDisplay({ volume, className = '' }: OddsDisplayProps) {
   const { prices, outcomes, market, isLoading } = useSelectedMarket();
 
   if (isLoading) {
@@ -48,22 +49,33 @@ export function OddsDisplay({ className = '' }: OddsDisplayProps) {
   };
 
   const isMarketOpen = market?.status === 'OPEN';
+  const displayVolume = volume ?? market?.volume;
   const cols = outcomes.length <= 2 ? 'grid-cols-2' : outcomes.length === 3 ? 'grid-cols-3' : `grid-cols-2 sm:grid-cols-${Math.min(outcomes.length, 4)}`;
 
   return (
     <div className={`bg-surface-raised border border-border rounded-lg p-6 ${className}`} data-testid="odds-display">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-sm font-mono uppercase tracking-wider text-text-secondary">Current Odds</h2>
-        <span
-          className={`text-xs px-2 py-1 rounded ${
-            isMarketOpen
-              ? 'bg-green-500/20 text-green-400'
-              : 'bg-gray-600/50 text-gray-400'
-          }`}
-          data-testid="market-status-badge"
-        >
-          {market?.status || 'NO MARKET'}
-        </span>
+        <div className="flex items-center gap-2">
+          {displayVolume !== undefined && displayVolume > 0 && (
+            <span
+              className="text-xs px-2 py-1 rounded bg-green-500/10 text-green-400"
+              data-testid="market-volume"
+            >
+              Vol: ${displayVolume.toFixed(2)}
+            </span>
+          )}
+          <span
+            className={`text-xs px-2 py-1 rounded ${
+              isMarketOpen
+                ? 'bg-green-500/20 text-green-400'
+                : 'bg-gray-600/50 text-gray-400'
+            }`}
+            data-testid="market-status-badge"
+          >
+            {market?.status || 'NO MARKET'}
+          </span>
+        </div>
       </div>
       <div className={`grid ${cols} gap-4`}>
         {outcomes.map((outcome, i) => {

@@ -36,6 +36,8 @@ describe('Game Routes', () => {
       expect(testGame.homeTeam.abbreviation).toBe('NYY');
       expect(testGame.awayTeam).toBeDefined();
       expect(testGame.awayTeam.abbreviation).toBe('BOS');
+      // Volume included
+      expect(testGame.volume).toBe(0);
     });
 
     test('includes marketCount for each game', async () => {

@@ -233,6 +233,42 @@ describe('formatters', () => {
     });
   });
 
+  describe('formatWsMessage — LP messages', () => {
+    it('formats LP_DEPOSIT', () => {
+      const msg: WsMessage = {
+        type: 'LP_DEPOSIT',
+        address: '0x1234567890abcdef1234567890abcdef12345678',
+        amount: 500,
+        shares: 476.19,
+        sharePrice: 1.05,
+      };
+      expect(formatWsMessage(msg)).toBe('0x1234..5678 deposited $500.00 (476.19 shares @ $1.05)');
+    });
+
+    it('formats LP_WITHDRAWAL', () => {
+      const msg: WsMessage = {
+        type: 'LP_WITHDRAWAL',
+        address: '0x1234567890abcdef1234567890abcdef12345678',
+        amount: 525,
+        shares: 500,
+        sharePrice: 1.05,
+      };
+      expect(formatWsMessage(msg)).toBe('0x1234..5678 withdrew $525.00 (500.00 shares @ $1.05)');
+    });
+
+    it('formats POOL_UPDATE', () => {
+      const msg: WsMessage = {
+        type: 'POOL_UPDATE',
+        poolValue: 5000,
+        totalShares: 4800,
+        sharePrice: 1.0417,
+        lpCount: 3,
+        canWithdraw: true,
+      };
+      expect(formatWsMessage(msg)).toBe('Pool: $5000.00 | 4800.00 shares | $1.04/share');
+    });
+  });
+
   describe('formatWsMessage — session messages', () => {
     it('formats SESSION_VERSION_UPDATED', () => {
       const msg: WsMessage = {

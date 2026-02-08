@@ -125,6 +125,41 @@ export interface WsP2PBetResult {
   refunded?: number;
 }
 
+export interface WsLPDeposit {
+  type: 'LP_DEPOSIT';
+  address: string;
+  amount: number;
+  shares: number;
+  sharePrice: number;
+}
+
+export interface WsLPWithdrawal {
+  type: 'LP_WITHDRAWAL';
+  address: string;
+  amount: number;
+  shares: number;
+  sharePrice: number;
+}
+
+export interface WsPoolUpdate {
+  type: 'POOL_UPDATE';
+  poolValue: number;
+  totalShares: number;
+  sharePrice: number;
+  lpCount: number;
+  canWithdraw: boolean;
+}
+
+export interface WsVolumeUpdate {
+  type: 'VOLUME_UPDATE';
+  marketId: string;
+  marketVolume: number;
+  categoryId: string;
+  categoryVolume: number;
+  gameId: string;
+  gameVolume: number;
+}
+
 export type WsMessage =
   | WsOddsUpdate
   | WsMarketStatus
@@ -140,9 +175,21 @@ export type WsMessage =
   | WsOrderFilled
   | WsOrderBookUpdate
   | WsOrderCancelled
-  | WsP2PBetResult;
+  | WsP2PBetResult
+  | WsLPDeposit
+  | WsLPWithdrawal
+  | WsPoolUpdate
+  | WsVolumeUpdate;
 
 // ── Admin state response ──
+
+export interface PoolStats {
+  poolValue: number;
+  totalShares: number;
+  sharePrice: number;
+  lpCount: number;
+  canWithdraw: boolean;
+}
 
 export interface AdminStateResponse {
   market: {
@@ -164,6 +211,7 @@ export interface AdminStateResponse {
   positionCount: number;
   connectionCount: number;
   sessionCounts?: { open: number; settled: number };
+  pool?: PoolStats;
 }
 
 // ── Position ──

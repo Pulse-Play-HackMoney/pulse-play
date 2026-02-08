@@ -188,10 +188,10 @@ describe('Admin Routes', () => {
   // ── Config endpoints ──
 
   describe('config endpoints', () => {
-    test('GET /api/admin/config returns transactionFeePercent', async () => {
+    test('GET /api/admin/config returns transactionFeePercent and lmsrSensitivityFactor', async () => {
       const res = await app.inject({ method: 'GET', url: '/api/admin/config' });
       expect(res.statusCode).toBe(200);
-      expect(res.json()).toEqual({ transactionFeePercent: 1 });
+      expect(res.json()).toEqual({ transactionFeePercent: 1, lmsrSensitivityFactor: 0.01 });
     });
 
     test('POST /api/admin/config updates transactionFeePercent', async () => {
@@ -201,8 +201,32 @@ describe('Admin Routes', () => {
         payload: { transactionFeePercent: 2.5 },
       });
       expect(res.statusCode).toBe(200);
-      expect(res.json()).toEqual({ success: true, transactionFeePercent: 2.5 });
+      const body = res.json();
+      expect(body.success).toBe(true);
+      expect(body.transactionFeePercent).toBe(2.5);
       expect(ctx.transactionFeePercent).toBe(2.5);
+    });
+
+    test('POST /api/admin/config updates lmsrSensitivityFactor', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/admin/config',
+        payload: { lmsrSensitivityFactor: 0.05 },
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.success).toBe(true);
+      expect(body.lmsrSensitivityFactor).toBe(0.05);
+      expect(ctx.lmsrSensitivityFactor).toBe(0.05);
+    });
+
+    test('POST /api/admin/config rejects invalid lmsrSensitivityFactor', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/admin/config',
+        payload: { lmsrSensitivityFactor: 0 },
+      });
+      expect(res.statusCode).toBe(400);
     });
 
     test('POST /api/admin/config broadcasts CONFIG_UPDATED', async () => {

@@ -88,9 +88,19 @@ export function GameCard({ game, marketCount = 0 }: GameCardProps) {
           <span className="text-text-muted" data-testid="game-market-count">
             {marketCount > 0 ? `${marketCount} market${marketCount !== 1 ? 's' : ''}` : 'No markets'}
           </span>
-          <span className="text-text-muted text-xs">
-            {new Date(game.createdAt).toLocaleDateString()}
-          </span>
+          <div className="flex items-center gap-2">
+            {game.volume !== undefined && game.volume > 0 && (
+              <span
+                className="text-xs px-1.5 py-0.5 rounded bg-green-500/10 text-green-400 font-medium"
+                data-testid="game-volume"
+              >
+                Vol: ${game.volume.toFixed(2)}
+              </span>
+            )}
+            <span className="text-text-muted text-xs">
+              {new Date(game.createdAt).toLocaleDateString()}
+            </span>
+          </div>
         </div>
       </div>
     </Link>

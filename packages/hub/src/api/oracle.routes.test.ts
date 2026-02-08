@@ -175,6 +175,22 @@ describe('Oracle Routes', () => {
       );
     });
 
+    test('market open auto-scales b from pool value', async () => {
+      // Mock balance: 5000 USD = 5000000000 micro units
+      (ctx.clearnodeClient.getBalance as jest.Mock).mockResolvedValue('5000000000');
+      // sensitivity factor is 0.01 by default → b = 5000 * 0.01 = 50
+      const marketId = await activateAndOpenMarket();
+      const market = ctx.marketManager.getMarket(marketId);
+      expect(market!.b).toBe(50);
+    });
+
+    test('market open uses default b when getBalance fails', async () => {
+      (ctx.clearnodeClient.getBalance as jest.Mock).mockRejectedValue(new Error('disconnected'));
+      const marketId = await activateAndOpenMarket();
+      const market = ctx.marketManager.getMarket(marketId);
+      expect(market!.b).toBe(100); // default
+    });
+
     test('created market is accessible via GET /api/market', async () => {
       const marketId = await activateAndOpenMarket();
       const res = await app.inject({ method: 'GET', url: '/api/market' });
@@ -351,6 +367,25 @@ describe('Oracle Routes', () => {
       });
       expect(spy).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'MARKET_STATUS', status: 'RESOLVED' }),
+      );
+    });
+
+    test('outcome resolution broadcasts POOL_UPDATE', async () => {
+      await activateAndOpenMarket();
+      await app.inject({
+        method: 'POST',
+        url: '/api/oracle/market/close',
+        payload: { gameId: DEFAULT_TEST_GAME_ID, categoryId: DEFAULT_TEST_CATEGORY_ID },
+      });
+
+      const spy = jest.spyOn(ctx.ws, 'broadcast');
+      await app.inject({
+        method: 'POST',
+        url: '/api/oracle/outcome',
+        payload: { outcome: 'BALL', gameId: DEFAULT_TEST_GAME_ID, categoryId: DEFAULT_TEST_CATEGORY_ID },
+      });
+      expect(spy).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'POOL_UPDATE' }),
       );
     });
 
@@ -1022,6 +1057,61 @@ describe('Oracle Routes', () => {
       // P2P winner (Alice) should have win recorded
       const alice = ctx.userTracker.getUser('0xAlice');
       expect(alice!.totalWins).toBe(1);
+    });
+  });
+
+  // ── POOL_UPDATE broadcasts ──
+
+  describe('POOL_UPDATE broadcasts', () => {
+    test('broadcasts POOL_UPDATE after market open', async () => {
+      const spy = jest.spyOn(ctx.ws, 'broadcast');
+      await activateAndOpenMarket();
+
+      const poolUpdates = spy.mock.calls.filter(
+        (call) => (call[0] as any).type === 'POOL_UPDATE',
+      );
+      expect(poolUpdates.length).toBeGreaterThanOrEqual(1);
+    });
+
+    test('broadcasts POOL_UPDATE after market close', async () => {
+      await activateAndOpenMarket();
+      const spy = jest.spyOn(ctx.ws, 'broadcast');
+
+      await app.inject({
+        method: 'POST',
+        url: '/api/oracle/market/close',
+        payload: { gameId: DEFAULT_TEST_GAME_ID, categoryId: DEFAULT_TEST_CATEGORY_ID },
+      });
+
+      const poolUpdates = spy.mock.calls.filter(
+        (call) => (call[0] as any).type === 'POOL_UPDATE',
+      );
+      expect(poolUpdates.length).toBeGreaterThanOrEqual(1);
+    });
+
+    test('broadcasts POOL_UPDATE after each SESSION_SETTLED during resolution', async () => {
+      const marketId = await activateAndOpenMarket();
+      await placeBet('0xAlice', marketId, 'BALL', 10);
+      await placeBet('0xBob', marketId, 'STRIKE', 10);
+      await app.inject({
+        method: 'POST',
+        url: '/api/oracle/market/close',
+        payload: { gameId: DEFAULT_TEST_GAME_ID, categoryId: DEFAULT_TEST_CATEGORY_ID },
+      });
+
+      const spy = jest.spyOn(ctx.ws, 'broadcast');
+
+      await app.inject({
+        method: 'POST',
+        url: '/api/oracle/outcome',
+        payload: { outcome: 'BALL', gameId: DEFAULT_TEST_GAME_ID, categoryId: DEFAULT_TEST_CATEGORY_ID },
+      });
+
+      const poolUpdates = spy.mock.calls.filter(
+        (call) => (call[0] as any).type === 'POOL_UPDATE',
+      );
+      // At least one per settlement (loser + winner) + final after resolution = 3+
+      expect(poolUpdates.length).toBeGreaterThanOrEqual(3);
     });
   });
 });

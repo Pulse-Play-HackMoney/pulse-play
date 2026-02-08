@@ -26,6 +26,11 @@ import {
   cancelP2POrder,
   getOrderBookDepth,
   getUserP2POrders,
+  getLPStats,
+  getLPShare,
+  getLPEvents,
+  depositLP,
+  withdrawLP,
   ApiError,
 } from './api';
 import type { BetRequest, MarketResponse, PositionsResponse } from './types';
@@ -752,6 +757,82 @@ describe('api', () => {
       expect(result.orders).toEqual([]);
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:3001/api/orderbook/orders/0xAlice?marketId=market-1'
+      );
+    });
+  });
+
+  // ── LP Endpoints ──
+
+  describe('getLPStats', () => {
+    it('fetches pool stats', async () => {
+      const stats = { poolValue: 5000, totalShares: 4800, sharePrice: 1.042, lpCount: 3, canWithdraw: true };
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => stats });
+
+      const result = await getLPStats();
+      expect(result).toEqual(stats);
+      expect(mockFetch).toHaveBeenCalledWith('http://localhost:3001/api/lp/stats');
+    });
+  });
+
+  describe('getLPShare', () => {
+    it('fetches LP share for address', async () => {
+      const share = { address: '0xLP', shares: 1000, totalDeposited: 1000, totalWithdrawn: 0 };
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => share });
+
+      const result = await getLPShare('0xLP');
+      expect(result.address).toBe('0xLP');
+      expect(mockFetch).toHaveBeenCalledWith('http://localhost:3001/api/lp/share/0xLP');
+    });
+  });
+
+  describe('getLPEvents', () => {
+    it('fetches events with address and limit', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ events: [] }) });
+
+      await getLPEvents('0xLP', 10);
+      expect(mockFetch).toHaveBeenCalledWith('http://localhost:3001/api/lp/events?address=0xLP&limit=10');
+    });
+
+    it('fetches all events when no params', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ events: [] }) });
+
+      await getLPEvents();
+      expect(mockFetch).toHaveBeenCalledWith('http://localhost:3001/api/lp/events');
+    });
+  });
+
+  describe('depositLP', () => {
+    it('sends deposit request', async () => {
+      const resp = { success: true, shares: 500, sharePrice: 1.0, poolValueAfter: 1500 };
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => resp });
+
+      const result = await depositLP('0xLP', 500);
+      expect(result.success).toBe(true);
+      expect(result.shares).toBe(500);
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:3001/api/lp/deposit',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ address: '0xLP', amount: 500 }),
+        })
+      );
+    });
+  });
+
+  describe('withdrawLP', () => {
+    it('sends withdraw request', async () => {
+      const resp = { success: true, amount: 500, sharePrice: 1.0, poolValueAfter: 500 };
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => resp });
+
+      const result = await withdrawLP('0xLP', 500);
+      expect(result.success).toBe(true);
+      expect(result.amount).toBe(500);
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:3001/api/lp/withdraw',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ address: '0xLP', shares: 500 }),
+        })
       );
     });
   });

@@ -10,6 +10,7 @@ export interface Market {
   status: MarketStatus;
   quantities: number[];
   b: number;
+  volume: number;
   outcome: Outcome | null;
   createdAt: number;
   openedAt: number | null;

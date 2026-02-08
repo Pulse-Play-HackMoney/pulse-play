@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { Header } from './Header';
 import * as WagmiProvider from '@/providers/WagmiProvider';
 import * as WebSocketProvider from '@/providers/WebSocketProvider';
@@ -39,7 +39,7 @@ describe('Header', () => {
     expect(screen.getByTestId('logo')).toHaveTextContent('PulsePlay');
     expect(screen.getByTestId('nav-games')).toHaveTextContent('Games');
     expect(screen.getByTestId('nav-oracle')).toHaveTextContent('Oracle');
-    expect(screen.getByTestId('nav-market-maker')).toHaveTextContent('Market Maker');
+    expect(screen.getByTestId('nav-market-maker')).toHaveTextContent('Liquidity Pool');
     expect(screen.getByTestId('nav-account')).toHaveTextContent('Account');
     expect(screen.getByTestId('nav-admin')).toHaveTextContent('Admin');
   });
@@ -60,5 +60,28 @@ describe('Header', () => {
     render(<Header />);
 
     expect(screen.getByTestId('ws-status')).toHaveTextContent('Offline');
+  });
+
+  it('renders hamburger button', () => {
+    render(<Header />);
+    expect(screen.getByTestId('hamburger')).toBeInTheDocument();
+  });
+
+  it('shows mobile nav when hamburger is clicked', () => {
+    render(<Header />);
+    expect(screen.queryByTestId('mobile-nav')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('hamburger'));
+    expect(screen.getByTestId('mobile-nav')).toBeInTheDocument();
+  });
+
+  it('hides mobile nav when hamburger is clicked again', () => {
+    render(<Header />);
+
+    fireEvent.click(screen.getByTestId('hamburger'));
+    expect(screen.getByTestId('mobile-nav')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('hamburger'));
+    expect(screen.queryByTestId('mobile-nav')).not.toBeInTheDocument();
   });
 });

@@ -247,6 +247,18 @@ export async function completeGame(
   return handleResponse(response);
 }
 
+export interface GameVolumeResponse {
+  gameId: string;
+  gameVolume: number;
+  categories: Record<string, number>;
+  markets: Array<{ id: string; categoryId: string; volume: number }>;
+}
+
+export async function getGameVolume(gameId: string): Promise<GameVolumeResponse> {
+  const response = await fetch(`${HUB_REST_URL}/api/games/${gameId}/volume`);
+  return handleResponse<GameVolumeResponse>(response);
+}
+
 // ── Oracle Endpoints ──
 
 export async function setGameState(
@@ -337,6 +349,45 @@ export async function requestMMFaucet(count = 1): Promise<MMFaucetResponse> {
     body: JSON.stringify({ count }),
   });
   return handleResponse<MMFaucetResponse>(response);
+}
+
+// ── LP (Liquidity Pool) Endpoints ──
+
+export async function getLPStats(): Promise<import('./types').PoolStats> {
+  const response = await fetch(`${HUB_REST_URL}/api/lp/stats`);
+  return handleResponse(response);
+}
+
+export async function getLPShare(address: string): Promise<import('./types').LPShare> {
+  const response = await fetch(`${HUB_REST_URL}/api/lp/share/${address}`);
+  return handleResponse(response);
+}
+
+export async function getLPEvents(address?: string, limit?: number): Promise<{ events: import('./types').LPEvent[] }> {
+  const params = new URLSearchParams();
+  if (address) params.set('address', address);
+  if (limit) params.set('limit', String(limit));
+  const qs = params.toString();
+  const response = await fetch(`${HUB_REST_URL}/api/lp/events${qs ? `?${qs}` : ''}`);
+  return handleResponse(response);
+}
+
+export async function depositLP(address: string, amount: number): Promise<import('./types').LPDepositResponse> {
+  const response = await fetch(`${HUB_REST_URL}/api/lp/deposit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ address, amount }),
+  });
+  return handleResponse(response);
+}
+
+export async function withdrawLP(address: string, shares: number): Promise<import('./types').LPWithdrawResponse> {
+  const response = await fetch(`${HUB_REST_URL}/api/lp/withdraw`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ address, shares }),
+  });
+  return handleResponse(response);
 }
 
 // ── Admin Config Endpoints ──

@@ -1,6 +1,7 @@
 import type { Outcome } from '../modules/lmsr/types.js';
 import type { MarketStatus } from '../modules/market/types.js';
 import type { SessionStatus } from '../modules/position/types.js';
+import type { PoolStats } from '../modules/lp/types.js';
 
 // ── Request DTOs ──
 
@@ -98,6 +99,7 @@ export interface AdminStateResponse {
   // backward compat
   priceBall: number;
   priceStrike: number;
+  pool?: PoolStats;
 }
 
 // ── WebSocket message types ──
@@ -118,7 +120,11 @@ export type WsMessageType =
   | 'ORDER_FILLED'
   | 'ORDERBOOK_UPDATE'
   | 'ORDER_CANCELLED'
-  | 'P2P_BET_RESULT';
+  | 'P2P_BET_RESULT'
+  | 'LP_DEPOSIT'
+  | 'LP_WITHDRAWAL'
+  | 'POOL_UPDATE'
+  | 'VOLUME_UPDATE';
 
 export interface WsOddsUpdate {
   type: 'ODDS_UPDATE';
@@ -261,6 +267,41 @@ export interface WsP2PBetResult {
   refunded?: number;
 }
 
+export interface WsLPDeposit {
+  type: 'LP_DEPOSIT';
+  address: string;
+  amount: number;
+  shares: number;
+  sharePrice: number;
+}
+
+export interface WsLPWithdrawal {
+  type: 'LP_WITHDRAWAL';
+  address: string;
+  amount: number;
+  shares: number;
+  sharePrice: number;
+}
+
+export interface WsPoolUpdate {
+  type: 'POOL_UPDATE';
+  poolValue: number;
+  totalShares: number;
+  sharePrice: number;
+  lpCount: number;
+  canWithdraw: boolean;
+}
+
+export interface WsVolumeUpdate {
+  type: 'VOLUME_UPDATE';
+  marketId: string;
+  marketVolume: number;
+  categoryId: string;
+  categoryVolume: number;
+  gameId: string;
+  gameVolume: number;
+}
+
 export type WsMessage =
   | WsOddsUpdate
   | WsMarketStatus
@@ -277,4 +318,8 @@ export type WsMessage =
   | WsOrderFilled
   | WsOrderBookUpdate
   | WsOrderCancelled
-  | WsP2PBetResult;
+  | WsP2PBetResult
+  | WsLPDeposit
+  | WsLPWithdrawal
+  | WsPoolUpdate
+  | WsVolumeUpdate;

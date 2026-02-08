@@ -318,6 +318,34 @@ export const logger = {
     write(`${INDENT}${DIM}├${RESET} ${a} P2P ${GREEN}WIN${RESET} ${pay} (profit: ${prof})`);
   },
 
+  // ── Liquidity Pool ───────────────────────────────────────────────────
+
+  lpDeposit(address: string, amount: number, shares: number, sharePrice: number): void {
+    if (silent) return;
+    const a = `${MAGENTA}${addr(address)}${RESET}`;
+    const amt = `${GREEN}$${amount.toFixed(2)}${RESET}`;
+    const sh = shares.toFixed(2);
+    const sp = `$${sharePrice.toFixed(4)}`;
+    write(`${INDENT}${DIM}├${RESET} ${a} LP deposit ${amt} (${sh} shares @ ${sp})`);
+  },
+
+  lpWithdrawal(address: string, amount: number, shares: number, sharePrice: number): void {
+    if (silent) return;
+    const a = `${MAGENTA}${addr(address)}${RESET}`;
+    const amt = `${GREEN}$${amount.toFixed(2)}${RESET}`;
+    const sh = shares.toFixed(2);
+    const sp = `$${sharePrice.toFixed(4)}`;
+    write(`${INDENT}${DIM}├${RESET} ${a} LP withdrawal ${amt} (${sh} shares @ ${sp})`);
+  },
+
+  lpPoolUpdate(poolValue: number, totalShares: number, sharePrice: number): void {
+    if (silent) return;
+    const pv = `${GREEN}$${poolValue.toFixed(2)}${RESET}`;
+    const ts = totalShares.toFixed(2);
+    const sp = `$${sharePrice.toFixed(4)}`;
+    write(`${INDENT}${DIM}└${RESET} ${CYAN}Pool${RESET} ${pv} ${DIM}|${RESET} ${ts} shares ${DIM}|${RESET} ${sp}/share`);
+  },
+
   // ── Errors ─────────────────────────────────────────────────────────────
 
   error(context: string, err: unknown): void {

@@ -83,12 +83,20 @@ function pushSchema(db: DrizzleDB): void {
     status TEXT NOT NULL DEFAULT 'PENDING',
     quantities TEXT NOT NULL DEFAULT '[]',
     b REAL NOT NULL DEFAULT 100,
+    volume REAL NOT NULL DEFAULT 0,
     outcome TEXT,
     created_at INTEGER NOT NULL,
     opened_at INTEGER,
     closed_at INTEGER,
     resolved_at INTEGER
   )`);
+
+  // Migration: add volume column to existing markets table
+  try {
+    db.run(sql`ALTER TABLE markets ADD COLUMN volume REAL NOT NULL DEFAULT 0`);
+  } catch {
+    // Column already exists — ignore
+  }
 
   db.run(sql`CREATE INDEX IF NOT EXISTS idx_markets_game_category_status
     ON markets(game_id, category_id, status)`);
@@ -166,6 +174,30 @@ function pushSchema(db: DrizzleDB): void {
   )`);
 
   db.run(sql`CREATE INDEX IF NOT EXISTS idx_users_pnl ON users(net_pnl)`);
+
+  db.run(sql`CREATE TABLE IF NOT EXISTS lp_shares (
+    address TEXT PRIMARY KEY,
+    shares REAL NOT NULL,
+    total_deposited REAL NOT NULL DEFAULT 0,
+    total_withdrawn REAL NOT NULL DEFAULT 0,
+    first_deposit_at INTEGER NOT NULL,
+    last_action_at INTEGER NOT NULL
+  )`);
+
+  db.run(sql`CREATE TABLE IF NOT EXISTS lp_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    address TEXT NOT NULL,
+    type TEXT NOT NULL,
+    amount REAL NOT NULL,
+    shares REAL NOT NULL,
+    share_price REAL NOT NULL,
+    pool_value_before REAL NOT NULL,
+    pool_value_after REAL NOT NULL,
+    timestamp INTEGER NOT NULL
+  )`);
+
+  db.run(sql`CREATE INDEX IF NOT EXISTS idx_lp_events_address ON lp_events(address)`);
+  db.run(sql`CREATE INDEX IF NOT EXISTS idx_lp_events_type ON lp_events(type)`);
 
   db.run(sql`CREATE TABLE IF NOT EXISTS settlements (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

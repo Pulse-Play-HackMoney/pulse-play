@@ -13,6 +13,7 @@ import { GameManager } from './modules/game/manager.js';
 import { TeamManager } from './modules/team/manager.js';
 import { UserTracker } from './modules/user/tracker.js';
 import { OrderBookManager } from './modules/orderbook/manager.js';
+import { LPManager } from './modules/lp/manager.js';
 import { ClearnodeClient } from './modules/clearnode/client.js';
 import { OracleService } from './modules/oracle/oracle.js';
 import { WsManager } from './api/ws.js';
@@ -51,6 +52,8 @@ async function main() {
     ws: new WsManager(),
     log: logger,
     transactionFeePercent: parseInt(process.env.TRANSACTION_FEE_PERCENT ?? '1', 10),
+    lpManager: new LPManager(db),
+    lmsrSensitivityFactor: parseFloat(process.env.LMSR_SENSITIVITY_FACTOR ?? '0.01'),
     uploadsDir: resolve(__dirname, '../uploads'),
   };
 

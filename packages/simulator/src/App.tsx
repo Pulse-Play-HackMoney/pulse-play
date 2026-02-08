@@ -22,6 +22,7 @@ import type {
   EventLogEntry,
   WsMessage,
   AdminStateResponse,
+  PoolStats,
   SimWalletRow,
   SimStatus,
   SimConfig,
@@ -67,6 +68,8 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
   const [results, setResults] = useState<SimResults | null>(null);
   const [mmBalance, setMmBalance] = useState<string | null>(null);
   const [positions, setPositions] = useState<Position[]>([]);
+  const [poolStats, setPoolStats] = useState<PoolStats | null>(null);
+  const [volume, setVolume] = useState<{ market: number; category: number; game: number }>({ market: 0, category: 0, game: 0 });
 
   // UI state
   const [uiMode, setUiMode] = useState<UIMode>('normal');
@@ -228,10 +231,30 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
         }
 
         case 'create': {
-          // :create [sportId] [homeTeamId] [awayTeamId] — defaults to baseball nyy bos
-          const sportId = parts[1] || 'baseball';
-          const homeTeamId = parts[2] || 'nyy';
-          const awayTeamId = parts[3] || 'bos';
+          // :create [sportId] [homeTeamId] [awayTeamId] — random defaults if omitted
+          let sportId = parts[1] || '';
+          let homeTeamId = parts[2] || '';
+          let awayTeamId = parts[3] || '';
+
+          // If no args, pick random sport + teams
+          if (!sportId) {
+            try {
+              const sportsRes = await hubClient.getSports();
+              if (sportsRes.sports.length > 0) {
+                const randomSport = sportsRes.sports[Math.floor(Math.random() * sportsRes.sports.length)];
+                sportId = randomSport.id;
+                const teamsRes = await hubClient.getTeams(sportId);
+                if (teamsRes.teams.length >= 2) {
+                  const shuffled = [...teamsRes.teams].sort(() => Math.random() - 0.5);
+                  homeTeamId = shuffled[0].id;
+                  awayTeamId = shuffled[1].id;
+                }
+              }
+            } catch { /* fall through to defaults */ }
+          }
+          sportId = sportId || 'baseball';
+          homeTeamId = homeTeamId || 'nyy';
+          awayTeamId = awayTeamId || 'bos';
 
           setLoadingMessage(`Creating game (${sportId}: ${homeTeamId} vs ${awayTeamId})...`);
           try {
@@ -257,24 +280,35 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
         }
 
         case 'open': {
-          // :open [categoryId] — opens a market in the current game (default: pitching)
-          const categoryId = parts[1] || 'pitching';
+          // :open [categoryId] — opens a market in the current game (random default)
+          let categoryId = parts[1] || '';
 
           if (!currentGameId) {
             showStatus('No game loaded. Use :create or :games first');
             return;
           }
 
+          // If no categoryId given, pick random from current game's sport
+          if (!categoryId) {
+            try {
+              const gamesRes = await hubClient.getGames();
+              const game = gamesRes.games.find((g) => g.id === currentGameId);
+              if (game) {
+                const catRes = await hubClient.getSportCategories(game.sportId);
+                if (catRes.categories.length > 0) {
+                  const randomCat = catRes.categories[Math.floor(Math.random() * catRes.categories.length)];
+                  categoryId = randomCat.id;
+                }
+              }
+            } catch { /* fall through */ }
+          }
+          categoryId = categoryId || 'pitching';
+
           setLoadingMessage(`Opening market (${categoryId})...`);
           try {
             // Fetch category outcomes for this sport's category
             let categoryOutcomes: string[] = ['BALL', 'STRIKE'];
             try {
-              // Determine sportId from admin state or default
-              const sportId = adminState?.market?.gameId
-                ? 'baseball' // fallback
-                : 'baseball';
-              // Try to get the game to determine sportId
               const gamesRes = await hubClient.getGames();
               const game = gamesRes.games.find((g) => g.id === currentGameId);
               if (game) {
@@ -964,6 +998,10 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
             gameState: msg.state.gameState,
           };
         });
+        // Extract pool stats from STATE_SYNC if available
+        if (msg.state.pool) {
+          setPoolStats(msg.state.pool);
+        }
         break;
       case 'ODDS_UPDATE':
         // Only apply if this update is for our tracked market
@@ -1114,6 +1152,27 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
       case 'ORDER_CANCELLED':
       case 'P2P_BET_RESULT':
         break;
+      case 'LP_DEPOSIT':
+      case 'LP_WITHDRAWAL':
+        // Logged via addEvent in the message drain loop; refresh MM balance
+        refreshMMBalance();
+        break;
+      case 'POOL_UPDATE':
+        setPoolStats({
+          poolValue: msg.poolValue,
+          totalShares: msg.totalShares,
+          sharePrice: msg.sharePrice,
+          lpCount: msg.lpCount,
+          canWithdraw: msg.canWithdraw,
+        });
+        break;
+      case 'VOLUME_UPDATE':
+        setVolume({
+          market: msg.marketVolume,
+          category: msg.categoryVolume,
+          game: msg.gameVolume,
+        });
+        break;
     }
   }, [walletManager, clearnodePool, refreshMMBalance]);
 
@@ -1235,6 +1294,7 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
                 wsConnected={connected}
                 wsError={wsError}
                 state={adminState}
+                poolStats={poolStats}
               />
               <MarketPanel
                 state={adminState}
@@ -1245,6 +1305,7 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
                 betCount={totalBets}
                 mmBalance={mmBalance}
                 results={results}
+                volume={volume}
               />
               <WalletTable
                 wallets={wallets}

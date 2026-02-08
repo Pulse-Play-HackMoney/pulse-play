@@ -56,6 +56,7 @@ export const markets = sqliteTable('markets', {
   status: text('status').notNull().default('PENDING'),
   quantities: text('quantities').notNull().default('[]'), // JSON array: '[0,0]'
   b: real('b').notNull().default(100),
+  volume: real('volume').notNull().default(0),
   outcome: text('outcome'),
   createdAt: integer('created_at').notNull(),
   openedAt: integer('opened_at'),
@@ -142,6 +143,34 @@ export const users = sqliteTable('users', {
   lastActiveAt: integer('last_active_at').notNull(),
 }, (table) => [
   index('idx_users_pnl').on(table.netPnl),
+]);
+
+// ── LP Shares ──────────────────────────────────────────────────────────────
+
+export const lpShares = sqliteTable('lp_shares', {
+  address: text('address').primaryKey(),
+  shares: real('shares').notNull(),
+  totalDeposited: real('total_deposited').notNull().default(0),
+  totalWithdrawn: real('total_withdrawn').notNull().default(0),
+  firstDepositAt: integer('first_deposit_at').notNull(),
+  lastActionAt: integer('last_action_at').notNull(),
+});
+
+// ── LP Events ──────────────────────────────────────────────────────────────
+
+export const lpEvents = sqliteTable('lp_events', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  address: text('address').notNull(),
+  type: text('type').notNull(), // 'DEPOSIT' | 'WITHDRAWAL'
+  amount: real('amount').notNull(),
+  shares: real('shares').notNull(),
+  sharePrice: real('share_price').notNull(),
+  poolValueBefore: real('pool_value_before').notNull(),
+  poolValueAfter: real('pool_value_after').notNull(),
+  timestamp: integer('timestamp').notNull(),
+}, (table) => [
+  index('idx_lp_events_address').on(table.address),
+  index('idx_lp_events_type').on(table.type),
 ]);
 
 // ── Settlements ─────────────────────────────────────────────────────────────

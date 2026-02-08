@@ -16,9 +16,10 @@ import { registerGameRoutes } from './api/game.routes.js';
 import { registerUserRoutes } from './api/user.routes.js';
 import { registerTeamRoutes } from './api/team.routes.js';
 import { registerOrderBookRoutes } from './api/orderbook.routes.js';
+import { registerLPRoutes } from './api/lp.routes.js';
 import type { WsStateSync } from './api/types.js';
 import { getPrices } from './modules/lmsr/engine.js';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { marketCategories } from './db/schema.js';
 
 export async function buildApp(ctx: AppContext) {
@@ -56,7 +57,7 @@ export async function buildApp(ctx: AppContext) {
   });
 
   // WebSocket route
-  app.get('/ws', { websocket: true }, (socket, req) => {
+  app.get('/ws', { websocket: true }, async (socket, req) => {
     const address = (req.query as any)?.address as string | undefined;
     ctx.ws.addConnection(socket, address);
     ctx.log.wsConnect(address ?? null, ctx.ws.getConnectionCount());
@@ -98,6 +99,22 @@ export async function buildApp(ctx: AppContext) {
     const openSessions = positions.filter((p) => p.sessionStatus === 'open').length;
     const settledSessions = positions.filter((p) => p.sessionStatus === 'settled').length;
 
+    // Compute pool stats (non-critical — STATE_SYNC still works without it)
+    let poolStats: import('./modules/lp/types.js').PoolStats | undefined;
+    try {
+      const balance = await ctx.clearnodeClient.getBalance();
+      const poolValue = parseFloat(balance) / 1_000_000;
+      const allMarkets = ctx.marketManager.getAllMarkets();
+      const openMarkets = allMarkets.some((m) => m.status === 'OPEN');
+      const unsettledResult = ctx.db.all<{ c: number }>(
+        sql`SELECT COUNT(*) as c FROM positions WHERE session_status = 'open'`
+      );
+      const unsettled = (unsettledResult[0]?.c ?? 0) > 0;
+      poolStats = ctx.lpManager.getPoolStats(poolValue, openMarkets, unsettled);
+    } catch {
+      // Pool stats unavailable — not critical for STATE_SYNC
+    }
+
     const stateSync: WsStateSync = {
       type: 'STATE_SYNC',
       state: {
@@ -111,6 +128,7 @@ export async function buildApp(ctx: AppContext) {
         // backward compat
         priceBall: prices[0] ?? 0.5,
         priceStrike: prices[1] ?? 0.5,
+        ...(poolStats ? { pool: poolStats } : {}),
       },
       positions,
     };
@@ -134,6 +152,7 @@ export async function buildApp(ctx: AppContext) {
   registerTeamRoutes(app, ctx);
   registerUserRoutes(app, ctx);
   registerOrderBookRoutes(app, ctx);
+  registerLPRoutes(app, ctx);
 
   return app;
 }

@@ -173,6 +173,14 @@ export function formatWsMessage(msg: WsMessage): string {
       return msg.result === 'WIN'
         ? `P2P WIN $${msg.payout?.toFixed(2)}`
         : `P2P LOSS $${msg.loss?.toFixed(2)}`;
+    case 'LP_DEPOSIT':
+      return `${truncateAddress(msg.address)} deposited ${formatDollars(msg.amount)} (${formatShares(msg.shares)} shares @ ${formatDollars(msg.sharePrice)})`;
+    case 'LP_WITHDRAWAL':
+      return `${truncateAddress(msg.address)} withdrew ${formatDollars(msg.amount)} (${formatShares(msg.shares)} shares @ ${formatDollars(msg.sharePrice)})`;
+    case 'POOL_UPDATE':
+      return `Pool: ${formatDollars(msg.poolValue)} | ${formatShares(msg.totalShares)} shares | ${formatDollars(msg.sharePrice)}/share`;
+    case 'VOLUME_UPDATE':
+      return `Market: ${formatDollars(msg.marketVolume)} | Game: ${formatDollars(msg.gameVolume)}`;
     default:
       return JSON.stringify(msg);
   }

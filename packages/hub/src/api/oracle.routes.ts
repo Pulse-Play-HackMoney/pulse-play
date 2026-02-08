@@ -7,6 +7,7 @@ import { toMicroUnits, ASSET } from '../utils/units.js';
 import { eq } from 'drizzle-orm';
 import { marketCategories } from '../db/schema.js';
 import { encodeSessionData, type SessionDataV3, type SessionDataV3P2P } from '../modules/clearnode/session-data.js';
+import { broadcastPoolUpdate } from './pool-update.js';
 
 export function registerOracleRoutes(app: FastifyInstance, ctx: AppContext): void {
 
@@ -48,7 +49,19 @@ export function registerOracleRoutes(app: FastifyInstance, ctx: AppContext): voi
       return reply.status(400).send({ error: 'A CLOSED market must be resolved before opening a new one' });
     }
 
-    const created = ctx.marketManager.createMarket(gameId, categoryId);
+    // Auto-scale b parameter from pool value
+    let bParam: number | undefined;
+    try {
+      const balance = await ctx.clearnodeClient.getBalance();
+      const poolValue = parseFloat(balance) / 1_000_000;
+      if (poolValue > 0) {
+        bParam = poolValue * ctx.lmsrSensitivityFactor;
+      }
+    } catch {
+      // Balance unavailable — use default b
+    }
+
+    const created = ctx.marketManager.createMarket(gameId, categoryId, bParam);
     const market = ctx.marketManager.openMarket(created.id);
 
     ctx.ws.broadcast({
@@ -84,6 +97,8 @@ export function registerOracleRoutes(app: FastifyInstance, ctx: AppContext): voi
     ctx.log.marketOpened(market.id);
     ctx.log.broadcast('MARKET_STATUS', ctx.ws.getConnectionCount());
 
+    await broadcastPoolUpdate(ctx);
+
     return { success: true, marketId: market.id };
   });
 
@@ -111,6 +126,8 @@ export function registerOracleRoutes(app: FastifyInstance, ctx: AppContext): voi
 
     ctx.log.marketClosed(current.id);
     ctx.log.broadcast('MARKET_STATUS', ctx.ws.getConnectionCount());
+
+    await broadcastPoolUpdate(ctx);
 
     return { success: true, marketId: current.id };
   });
@@ -238,6 +255,8 @@ export function registerOracleRoutes(app: FastifyInstance, ctx: AppContext): voi
         loss: loser.loss,
       });
       ctx.log.sendTo(loser.address, 'BET_RESULT:LOSS');
+
+      await broadcastPoolUpdate(ctx);
     }
 
     // ── Settle winners ──
@@ -337,6 +356,8 @@ export function registerOracleRoutes(app: FastifyInstance, ctx: AppContext): voi
         payout: winner.payout,
       });
       ctx.log.sendTo(winner.address, 'BET_RESULT:WIN');
+
+      await broadcastPoolUpdate(ctx);
     }
 
     // ── P2P Resolution ─────────────────────────────────────────────────
@@ -583,6 +604,9 @@ export function registerOracleRoutes(app: FastifyInstance, ctx: AppContext): voi
     });
 
     ctx.log.broadcast('MARKET_STATUS', ctx.ws.getConnectionCount());
+
+    // Broadcast pool update after resolution (authoritative final state)
+    await broadcastPoolUpdate(ctx);
 
     return {
       success: true,

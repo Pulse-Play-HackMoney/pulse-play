@@ -75,8 +75,9 @@ export function registerBetRoutes(app: FastifyInstance, ctx: AppContext): void {
     const shares = getShares(market.quantities, market.b, outcomeIndex, netAmount);
     const newQuantities = getNewQuantities(market.quantities, outcomeIndex, shares);
 
-    // Update market quantities
+    // Update market quantities and volume
     ctx.marketManager.updateQuantities(marketId, newQuantities);
+    ctx.marketManager.addVolume(marketId, amount);
 
     // Record position
     const timestamp = Date.now();
@@ -118,6 +119,17 @@ export function registerBetRoutes(app: FastifyInstance, ctx: AppContext): void {
       priceStrike: prices[1] ?? 0.5,
       qBall: newQuantities[0] ?? 0,
       qStrike: newQuantities[1] ?? 0,
+    });
+
+    // Broadcast volume update
+    ctx.ws.broadcast({
+      type: 'VOLUME_UPDATE',
+      marketId,
+      marketVolume: ctx.marketManager.getMarketVolume(marketId),
+      categoryId: market.categoryId,
+      categoryVolume: ctx.marketManager.getCategoryVolume(market.gameId, market.categoryId),
+      gameId: market.gameId,
+      gameVolume: ctx.marketManager.getGameVolume(market.gameId),
     });
 
     ctx.log.betPlaced(address, amount, outcome, marketId, shares, prices[0] ?? 0.5, prices[1] ?? 0.5);

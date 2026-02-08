@@ -6,6 +6,7 @@ import { HUB_REST_URL } from '@/lib/config';
 
 interface GameHeaderProps {
   game: Game;
+  volume?: number;
   className?: string;
 }
 
@@ -21,7 +22,7 @@ function getMatchupDisplay(game: Game) {
   return `${home} vs ${away}`;
 }
 
-export function GameHeader({ game, className = '' }: GameHeaderProps) {
+export function GameHeader({ game, volume, className = '' }: GameHeaderProps) {
   const statusStyle = STATUS_STYLES[game.status] ?? STATUS_STYLES.SCHEDULED;
 
   return (
@@ -47,6 +48,14 @@ export function GameHeader({ game, className = '' }: GameHeaderProps) {
         >
           {game.status}
         </span>
+        {volume !== undefined && volume > 0 && (
+          <span
+            className="px-2 py-0.5 rounded text-xs font-medium bg-green-500/10 text-green-400"
+            data-testid="game-header-volume"
+          >
+            Vol: ${volume.toFixed(2)}
+          </span>
+        )}
       </div>
 
       <div className="flex items-center gap-4">

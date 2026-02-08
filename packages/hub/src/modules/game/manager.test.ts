@@ -26,6 +26,12 @@ describe('GameManager', () => {
       expect(game.id).toContain('nyy-bos-');
     });
 
+    test('auto-generated ID uses 5-char alphanumeric suffix (not timestamp)', () => {
+      const game = manager.createGame('baseball', 'nyy', 'bos');
+      const suffix = game.id.replace('nyy-bos-', '');
+      expect(suffix).toMatch(/^[a-z0-9]{5}$/);
+    });
+
     test('sets createdAt timestamp', () => {
       const before = Date.now();
       const game = manager.createGame('baseball', 'nyy', 'bos', 'test-1');

@@ -25,7 +25,7 @@ describe('MM Routes', () => {
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.address).toBe('0xMM');
-    expect(body.balance).toBe('1000');
+    expect(body.balance).toBe('1000000000');
     expect(body.isConnected).toBe(true);
   });
 
@@ -42,7 +42,7 @@ describe('MM Routes', () => {
     const body = res.json();
     expect(body.address).toBe('0xMM');
     // getBalance auto-connects and returns the balance
-    expect(body.balance).toBe('1000');
+    expect(body.balance).toBe('1000000000');
     expect(body.isConnected).toBe(true);
   });
 

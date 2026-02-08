@@ -64,6 +64,8 @@ export function registerAdminRoutes(app: FastifyInstance, ctx: AppContext): void
     ctx.oracle.stopAutoPlay();
 
     // Truncate all data tables (order matters for FK constraints)
+    ctx.db.run(sql`DELETE FROM lp_events`);
+    ctx.db.run(sql`DELETE FROM lp_shares`);
     ctx.db.run(sql`DELETE FROM settlements`);
     ctx.db.run(sql`DELETE FROM positions`);
     ctx.db.run(sql`DELETE FROM markets`);
@@ -86,18 +88,37 @@ export function registerAdminRoutes(app: FastifyInstance, ctx: AppContext): void
   // ── Fee config ──
 
   app.get('/api/admin/config', async () => {
-    return { transactionFeePercent: ctx.transactionFeePercent };
+    return {
+      transactionFeePercent: ctx.transactionFeePercent,
+      lmsrSensitivityFactor: ctx.lmsrSensitivityFactor,
+    };
   });
 
-  app.post<{ Body: { transactionFeePercent?: number } }>('/api/admin/config', async (req, reply) => {
-    const { transactionFeePercent } = req.body ?? {} as any;
-    if (typeof transactionFeePercent !== 'number' || transactionFeePercent < 0 || transactionFeePercent > 100) {
-      return reply.status(400).send({ error: 'transactionFeePercent must be a number between 0 and 100' });
+  app.post<{ Body: { transactionFeePercent?: number; lmsrSensitivityFactor?: number } }>('/api/admin/config', async (req, reply) => {
+    const { transactionFeePercent, lmsrSensitivityFactor } = req.body ?? {} as any;
+
+    if (transactionFeePercent !== undefined) {
+      if (typeof transactionFeePercent !== 'number' || transactionFeePercent < 0 || transactionFeePercent > 100) {
+        return reply.status(400).send({ error: 'transactionFeePercent must be a number between 0 and 100' });
+      }
+      ctx.transactionFeePercent = transactionFeePercent;
+      ctx.ws.broadcast({ type: 'CONFIG_UPDATED', transactionFeePercent });
+      ctx.log.configUpdated('transactionFeePercent', transactionFeePercent);
     }
-    ctx.transactionFeePercent = transactionFeePercent;
-    ctx.ws.broadcast({ type: 'CONFIG_UPDATED', transactionFeePercent });
-    ctx.log.configUpdated('transactionFeePercent', transactionFeePercent);
-    return { success: true, transactionFeePercent };
+
+    if (lmsrSensitivityFactor !== undefined) {
+      if (typeof lmsrSensitivityFactor !== 'number' || lmsrSensitivityFactor <= 0 || lmsrSensitivityFactor > 1) {
+        return reply.status(400).send({ error: 'lmsrSensitivityFactor must be a number between 0 (exclusive) and 1' });
+      }
+      ctx.lmsrSensitivityFactor = lmsrSensitivityFactor;
+      ctx.log.configUpdated('lmsrSensitivityFactor', lmsrSensitivityFactor);
+    }
+
+    return {
+      success: true,
+      transactionFeePercent: ctx.transactionFeePercent,
+      lmsrSensitivityFactor: ctx.lmsrSensitivityFactor,
+    };
   });
 
   // Get positions for a specific market
