@@ -6,6 +6,7 @@ import { WebSocketProvider } from '@/providers/WebSocketProvider';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { BetResultToast } from '@/components/bettor/BetResultToast';
+import { P2PResultToast } from '@/components/orderbook/P2PResultToast';
 
 function Providers({ children }: { children: React.ReactNode }) {
   const { address } = useWallet();
@@ -15,6 +16,7 @@ function Providers({ children }: { children: React.ReactNode }) {
       <WebSocketProvider address={address}>
         {children}
         <BetResultToast />
+        <P2PResultToast />
       </WebSocketProvider>
     </ClearnodeProvider>
   );

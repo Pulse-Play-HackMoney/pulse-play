@@ -86,7 +86,8 @@ export function PlaceOrderForm({ marketId, gameId, outcomes, className = '', onO
               <button
                 key={outcome}
                 onClick={() => setSelectedOutcome(outcome)}
-                className={`p-3 rounded-lg border transition-colors ${
+                disabled={!isMarketOpen}
+                className={`p-3 rounded-lg border transition-colors disabled:opacity-50 ${
                   isSelected ? color.selected : color.unselected
                 }`}
                 data-testid={`order-outcome-${outcome.toLowerCase()}`}
@@ -111,7 +112,8 @@ export function PlaceOrderForm({ marketId, gameId, outcomes, className = '', onO
           min="0.01"
           max="0.99"
           step="0.01"
-          className="w-full bg-surface-input border border-border rounded-lg px-4 py-2 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+          disabled={!isMarketOpen}
+          className="w-full bg-surface-input border border-border rounded-lg px-4 py-2 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent disabled:opacity-50"
           data-testid="mcps-input"
         />
         <p className="text-xs text-text-muted mt-1" data-testid="match-hint">
@@ -129,7 +131,8 @@ export function PlaceOrderForm({ marketId, gameId, outcomes, className = '', onO
           placeholder="Enter amount..."
           min="0.01"
           step="0.01"
-          className="w-full bg-surface-input border border-border rounded-lg px-4 py-2 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+          disabled={!isMarketOpen}
+          className="w-full bg-surface-input border border-border rounded-lg px-4 py-2 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent disabled:opacity-50"
           data-testid="order-amount-input"
         />
         <div className="flex gap-2 mt-2">
@@ -137,7 +140,8 @@ export function PlaceOrderForm({ marketId, gameId, outcomes, className = '', onO
             <button
               key={preset}
               onClick={() => setAmount(String(preset))}
-              className="px-3 py-1 text-xs bg-surface-input hover:bg-surface-overlay rounded text-text-secondary transition-colors"
+              disabled={!isMarketOpen}
+              className="px-3 py-1 text-xs bg-surface-input hover:bg-surface-overlay rounded text-text-secondary transition-colors disabled:opacity-50"
               data-testid={`order-preset-${preset}`}
             >
               ${preset}

@@ -3,6 +3,7 @@ import type { AppContext } from '../context.js';
 import { eq } from 'drizzle-orm';
 import { marketCategories } from '../db/schema.js';
 import { toMicroUnits, ASSET } from '../utils/units.js';
+import { encodeSessionData, type SessionDataV2P2P } from '../modules/clearnode/session-data.js';
 
 // ── Request/Response types ──────────────────────────────────────────────────
 
@@ -206,6 +207,47 @@ export function registerOrderBookRoutes(app: FastifyInstance, ctx: AppContext): 
       }
 
       ctx.log.orderFilled(result.orderId, fill.shares, fill.effectivePrice, fill.counterpartyAddress);
+    }
+
+    // V2P2P session data: enrich app session with order confirmation (non-fatal)
+    try {
+      const v2Version = appSessionVersion + 1;
+      const v2p2pData: SessionDataV2P2P = {
+        v: 2,
+        mode: 'p2p',
+        marketId,
+        outcome,
+        amount,
+        mcps,
+        maxShares: result.order.maxShares,
+        filledShares: result.order.filledShares,
+        filledAmount: result.order.filledAmount,
+        fillCount: result.fills.length,
+        status: result.order.status,
+        timestamp: Date.now(),
+      };
+      const v2SessionData = encodeSessionData(v2p2pData);
+      const mmAddress = ctx.clearnodeClient.getAddress();
+      await ctx.clearnodeClient.submitAppState({
+        appSessionId: appSessionId as `0x${string}`,
+        intent: 'operate',
+        version: v2Version,
+        allocations: [
+          { participant: userAddress as `0x${string}`, asset: ASSET, amount: toMicroUnits(amount - result.order.filledAmount) },
+          { participant: mmAddress as `0x${string}`, asset: ASSET, amount: toMicroUnits(result.order.filledAmount) },
+        ],
+        sessionData: v2SessionData,
+      });
+      ctx.positionTracker.updateAppSessionVersion(appSessionId, v2Version);
+      ctx.positionTracker.updateSessionData(appSessionId, v2SessionData);
+      ctx.ws.broadcast({
+        type: 'SESSION_VERSION_UPDATED',
+        appSessionId,
+        version: v2Version,
+        sessionData: v2SessionData,
+      });
+    } catch (err) {
+      ctx.log.error('p2p-order-session-data-update', err);
     }
 
     // Broadcast order placed

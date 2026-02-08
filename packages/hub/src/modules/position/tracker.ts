@@ -117,6 +117,14 @@ export class PositionTracker {
     return row ? toPosition(row) : null;
   }
 
+  getPositionBySession(appSessionId: string): Position | null {
+    const row = this.db.select().from(positions)
+      .where(eq(positions.appSessionId, appSessionId))
+      .limit(1)
+      .get();
+    return row ? toPosition(row) : null;
+  }
+
   /**
    * Archives positions for a market to the settlements table, then deletes them.
    * Requires the market to be RESOLVED to determine win/loss results.

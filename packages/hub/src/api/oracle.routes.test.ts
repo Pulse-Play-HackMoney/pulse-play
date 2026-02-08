@@ -122,6 +122,23 @@ describe('Oracle Routes', () => {
       expect(res.statusCode).toBe(400);
     });
 
+    test('returns 400 when a CLOSED market exists (must be resolved first)', async () => {
+      await activateAndOpenMarket();
+      await app.inject({
+        method: 'POST',
+        url: '/api/oracle/market/close',
+        payload: { gameId: DEFAULT_TEST_GAME_ID, categoryId: DEFAULT_TEST_CATEGORY_ID },
+      });
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/oracle/market/open',
+        payload: { gameId: DEFAULT_TEST_GAME_ID, categoryId: DEFAULT_TEST_CATEGORY_ID },
+      });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().error).toBe('A CLOSED market must be resolved before opening a new one');
+    });
+
     test('broadcasts MARKET_STATUS(OPEN) via WebSocket', async () => {
       const spy = jest.spyOn(ctx.ws, 'broadcast');
       ctx.oracle.setGameActive(true);

@@ -39,10 +39,13 @@ export function registerOracleRoutes(app: FastifyInstance, ctx: AppContext): voi
       return reply.status(400).send({ error: 'Game is not active' });
     }
 
-    // Check if there's already an OPEN market for this stream
+    // Check if there's already an OPEN or CLOSED market for this stream
     const current = ctx.marketManager.getCurrentMarket(gameId, categoryId);
     if (current && current.status === 'OPEN') {
       return reply.status(400).send({ error: 'A market is already OPEN' });
+    }
+    if (current && current.status === 'CLOSED') {
+      return reply.status(400).send({ error: 'A CLOSED market must be resolved before opening a new one' });
     }
 
     const created = ctx.marketManager.createMarket(gameId, categoryId);
@@ -351,6 +354,8 @@ export function registerOracleRoutes(app: FastifyInstance, ctx: AppContext): voi
         const sessionId = order.appSessionId as `0x${string}`;
         const loserAddr = order.userAddress as `0x${string}`;
         const mm = mmAddress as `0x${string}`;
+        const pos = ctx.positionTracker.getPositionBySession(order.appSessionId);
+        const p2pLoserVersion = pos ? pos.appSessionVersion + 1 : 2;
 
         const v3p2p: SessionDataV3P2P = {
           v: 3,
@@ -366,6 +371,31 @@ export function registerOracleRoutes(app: FastifyInstance, ctx: AppContext): voi
           timestamp: Date.now(),
         };
         const sessionData = encodeSessionData(v3p2p);
+
+        // Submit V3P2P state before closing (mirrors LMSR loser pattern)
+        try {
+          await ctx.clearnodeClient.submitAppState({
+            appSessionId: sessionId,
+            intent: 'operate',
+            version: p2pLoserVersion,
+            allocations: [
+              { participant: loserAddr, asset: ASSET, amount: toMicroUnits(unfilled) },
+              { participant: mm, asset: ASSET, amount: toMicroUnits(filledCost) },
+            ],
+            sessionData,
+          });
+          ctx.positionTracker.updateAppSessionVersion(order.appSessionId, p2pLoserVersion);
+          ctx.positionTracker.updateSessionData(order.appSessionId, sessionData);
+          ctx.ws.broadcast({
+            type: 'SESSION_VERSION_UPDATED',
+            appSessionId: order.appSessionId,
+            version: p2pLoserVersion,
+            sessionData,
+          });
+          ctx.log.resolutionStateUpdate(order.userAddress, order.appSessionId, p2pLoserVersion);
+        } catch (err) {
+          ctx.log.error(`p2p-resolution-loser-submitAppState-${order.userAddress}`, err);
+        }
 
         try {
           await ctx.clearnodeClient.closeSession({
@@ -416,6 +446,8 @@ export function registerOracleRoutes(app: FastifyInstance, ctx: AppContext): voi
         const sessionId = order.appSessionId as `0x${string}`;
         const winnerAddr = order.userAddress as `0x${string}`;
         const mm = mmAddress as `0x${string}`;
+        const winPos = ctx.positionTracker.getPositionBySession(order.appSessionId);
+        const p2pWinnerVersion = winPos ? winPos.appSessionVersion + 1 : 2;
 
         const v3p2p: SessionDataV3P2P = {
           v: 3,
@@ -431,6 +463,31 @@ export function registerOracleRoutes(app: FastifyInstance, ctx: AppContext): voi
           timestamp: Date.now(),
         };
         const sessionData = encodeSessionData(v3p2p);
+
+        // Submit V3P2P state before closing (mirrors LMSR winner pattern)
+        try {
+          await ctx.clearnodeClient.submitAppState({
+            appSessionId: sessionId,
+            intent: 'operate',
+            version: p2pWinnerVersion,
+            allocations: [
+              { participant: winnerAddr, asset: ASSET, amount: toMicroUnits(filledCost + unfilled - fee) },
+              { participant: mm, asset: ASSET, amount: toMicroUnits(fee) },
+            ],
+            sessionData,
+          });
+          ctx.positionTracker.updateAppSessionVersion(order.appSessionId, p2pWinnerVersion);
+          ctx.positionTracker.updateSessionData(order.appSessionId, sessionData);
+          ctx.ws.broadcast({
+            type: 'SESSION_VERSION_UPDATED',
+            appSessionId: order.appSessionId,
+            version: p2pWinnerVersion,
+            sessionData,
+          });
+          ctx.log.resolutionStateUpdate(order.userAddress, order.appSessionId, p2pWinnerVersion);
+        } catch (err) {
+          ctx.log.error(`p2p-resolution-winner-submitAppState-${order.userAddress}`, err);
+        }
 
         // Close session: return unfilled + fee to MM
         try {
@@ -499,6 +556,16 @@ export function registerOracleRoutes(app: FastifyInstance, ctx: AppContext): voi
       } catch (err) {
         ctx.log.error(`p2p-expire-close-${order.userAddress}`, err);
       }
+
+      // Update position status + broadcast so simulator/frontend reflect settled state
+      ctx.positionTracker.updateSessionStatus(order.appSessionId, 'settled');
+      ctx.ws.broadcast({
+        type: 'SESSION_SETTLED',
+        appSessionId: order.appSessionId,
+        status: 'settled' as const,
+        address: order.userAddress,
+      });
+
       ctx.log.orderExpired(order.orderId);
     }
 

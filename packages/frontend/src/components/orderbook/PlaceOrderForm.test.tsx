@@ -209,4 +209,31 @@ describe('PlaceOrderForm', () => {
     await user.type(screen.getByTestId('order-amount-input'), '6');
     expect(screen.getByTestId('place-order-button')).toBeDisabled();
   });
+
+  it('disables all inputs when market is not open', () => {
+    mockUseSelectedMarket.mockReturnValue({
+      market: { id: 'market-1', status: 'CLOSED' },
+      outcomes: ['BALL', 'STRIKE'],
+      prices: [0.5, 0.5],
+      quantities: [0, 0],
+    });
+
+    render(<PlaceOrderForm marketId="market-1" gameId="game-1" outcomes={['BALL', 'STRIKE']} />);
+
+    // Outcome buttons should be disabled
+    expect(screen.getByTestId('order-outcome-ball')).toBeDisabled();
+    expect(screen.getByTestId('order-outcome-strike')).toBeDisabled();
+
+    // MCPS input should be disabled
+    expect(screen.getByTestId('mcps-input')).toBeDisabled();
+
+    // Amount input should be disabled
+    expect(screen.getByTestId('order-amount-input')).toBeDisabled();
+
+    // Preset buttons should be disabled
+    expect(screen.getByTestId('order-preset-1')).toBeDisabled();
+    expect(screen.getByTestId('order-preset-5')).toBeDisabled();
+    expect(screen.getByTestId('order-preset-10')).toBeDisabled();
+    expect(screen.getByTestId('order-preset-25')).toBeDisabled();
+  });
 });

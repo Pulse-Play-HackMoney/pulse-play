@@ -40,7 +40,7 @@ function SessionDataExpanded({ sessionData }: { sessionData?: string }) {
 
   const v = data.v as number;
 
-  if (v === 2) {
+  if (v === 2 && data.mode !== 'p2p') {
     const amount = Number(data.amount) || 0;
     const shares = Number(data.shares) || 0;
     const price = Number(data.effectivePricePerShare) || 0;
@@ -89,6 +89,59 @@ function SessionDataExpanded({ sessionData }: { sessionData?: string }) {
         <Box>
           <Text color="gray">{'fee:'.padEnd(LABEL_WIDTH)}</Text>
           <Text color="yellow">{feeStr.padStart(VALUE_WIDTH)}</Text>
+        </Box>
+      </Box>
+    );
+  }
+
+  if (v === 2 && data.mode === 'p2p') {
+    // V2 P2P order confirmation
+    const amount = Number(data.amount) || 0;
+    const mcps = Number(data.mcps) || 0;
+    const maxShares = Number(data.maxShares) || 0;
+    const filledShares = Number(data.filledShares) || 0;
+    const filledAmount = Number(data.filledAmount) || 0;
+    const fillCount = Number(data.fillCount) || 0;
+    const status = String(data.status ?? '-');
+
+    return (
+      <Box flexDirection="column" paddingLeft={2} flexGrow={1}>
+        <Text color="gray" dimColor>{'─ V2 P2P Session Data ─'}</Text>
+        <Box>
+          <Text color="gray">{'mode:'.padEnd(LABEL_WIDTH)}</Text>
+          <Text color="magenta">{'p2p'.padStart(VALUE_WIDTH)}</Text>
+        </Box>
+        <Box>
+          <Text color="gray">{'market:'.padEnd(LABEL_WIDTH)}</Text>
+          <Text color="white">{String(data.marketId ?? '-').padStart(VALUE_WIDTH)}</Text>
+        </Box>
+        <Box>
+          <Text color="gray">{'outcome:'.padEnd(LABEL_WIDTH)}</Text>
+          <Text color="cyan">{String(data.outcome ?? '-').padStart(VALUE_WIDTH)}</Text>
+        </Box>
+        <Box>
+          <Text color="gray">{'amount:'.padEnd(LABEL_WIDTH)}</Text>
+          <Text color={amount > 0 ? 'green' : 'red'}>{formatDollars(amount).padStart(VALUE_WIDTH)}</Text>
+        </Box>
+        <Box>
+          <Text color="gray">{'mcps:'.padEnd(LABEL_WIDTH)}</Text>
+          <Text color="white">{mcps.toFixed(4).padStart(VALUE_WIDTH)}</Text>
+        </Box>
+        <Box>
+          <Text color="gray">{'maxShares:'.padEnd(LABEL_WIDTH)}</Text>
+          <Text color="white">{maxShares.toFixed(4).padStart(VALUE_WIDTH)}</Text>
+        </Box>
+        <Box>
+          <Text color="gray">{'filled:'.padEnd(LABEL_WIDTH)}</Text>
+          <Text color="white">{`${filledShares.toFixed(2)} shares / ${formatDollars(filledAmount)}`.padStart(VALUE_WIDTH)}</Text>
+        </Box>
+        <Box>
+          <Text color="gray">{'fills:'.padEnd(LABEL_WIDTH)}</Text>
+          <Text color="yellow">{String(fillCount).padStart(VALUE_WIDTH)}</Text>
+        </Box>
+        <Box>
+          <Text color="gray">{'status:'.padEnd(LABEL_WIDTH)}</Text>
+          <Text color="cyan">{status.padStart(VALUE_WIDTH)}</Text>
         </Box>
       </Box>
     );

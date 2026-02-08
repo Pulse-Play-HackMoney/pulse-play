@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useWebSocket } from '@/providers/WebSocketProvider';
+import { useClearnode } from '@/providers/ClearnodeProvider';
 import { getUserP2POrders, cancelP2POrder } from '@/lib/api';
 import type { P2POrder } from '@/lib/types';
 
@@ -26,6 +27,7 @@ function canCancel(status: string): boolean {
 
 export function UserOrders({ address, marketId, className = '' }: UserOrdersProps) {
   const { subscribe } = useWebSocket();
+  const { refreshBalance } = useClearnode();
   const [orders, setOrders] = useState<P2POrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
@@ -65,6 +67,7 @@ export function UserOrders({ address, marketId, className = '' }: UserOrdersProp
     try {
       await cancelP2POrder(orderId);
       await fetchOrders();
+      refreshBalance();
     } catch {
       // Error handled silently
     } finally {
