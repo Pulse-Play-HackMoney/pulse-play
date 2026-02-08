@@ -25,6 +25,7 @@ export class SimulationEngine {
   private timers: Map<number, NodeJS.Timeout> = new Map();
   private betCounts: Map<number, number> = new Map();
   private onEvent: SimEventHandler;
+  private gameId: string = '';
 
   constructor(deps: SimulationEngineDeps, onEvent: SimEventHandler = () => {}) {
     this.deps = deps;
@@ -61,10 +62,11 @@ export class SimulationEngine {
    * Start the simulation: generate profiles, start staggered bets.
    * Requires wallets to already be generated and funded.
    */
-  start(marketId: string, mmAddress: string): void {
+  start(marketId: string, mmAddress: string, gameId?: string): void {
     if (this.status === 'running') return;
 
     this.status = 'running';
+    if (gameId) this.gameId = gameId;
     this.betCounts.clear();
 
     // Generate profiles based on current config
@@ -252,8 +254,7 @@ export class SimulationEngine {
       );
 
       // Step 2: Place P2P order via hub
-      // Need gameId — derive from marketId format (e.g., "game-1-pitching-1" → "game-1")
-      const gameId = marketId.split('-').slice(0, 2).join('-');
+      const gameId = this.gameId;
 
       const result = await this.deps.hubClient.placeP2POrder({
         marketId,

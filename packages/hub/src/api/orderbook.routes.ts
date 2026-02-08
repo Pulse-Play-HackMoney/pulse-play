@@ -141,6 +141,7 @@ export function registerOrderBookRoutes(app: FastifyInstance, ctx: AppContext): 
       return reply.status(400).send({ error: `Invalid outcome. Must be one of: ${outcomes.join(', ')}` });
     }
 
+    try {
     // Place order via OrderBookManager
     const result = ctx.orderBookManager.placeOrder({
       marketId, gameId, userAddress, outcome, mcps, amount,
@@ -159,6 +160,25 @@ export function registerOrderBookRoutes(app: FastifyInstance, ctx: AppContext): 
       sessionStatus: 'open',
       mode: 'p2p',
       timestamp: Date.now(),
+    });
+
+    // Broadcast position added (Fix 7)
+    const positionCount = ctx.positionTracker.getPositionsByMarket(marketId).length;
+    ctx.ws.broadcast({
+      type: 'POSITION_ADDED',
+      position: {
+        address: userAddress,
+        marketId,
+        outcome,
+        shares: result.order.filledShares,
+        costPaid: result.order.filledAmount,
+        appSessionId,
+        appSessionVersion,
+        sessionStatus: 'open',
+        mode: 'p2p',
+        timestamp: Date.now(),
+      },
+      positionCount,
     });
 
     // Record user bet stat
@@ -227,6 +247,10 @@ export function registerOrderBookRoutes(app: FastifyInstance, ctx: AppContext): 
       fills: result.fills,
       order: result.order,
     };
+    } catch (err) {
+      ctx.log.error('p2p-place-order', err);
+      return reply.status(400).send({ error: (err as Error).message ?? 'Order placement failed' });
+    }
   });
 
   // ── DELETE /api/orderbook/order/:orderId — Cancel order ───────────────

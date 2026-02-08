@@ -51,7 +51,9 @@ export function UserOrders({ address, marketId, className = '' }: UserOrdersProp
     return subscribe((message) => {
       if (
         message.type === 'ORDER_FILLED' ||
-        message.type === 'ORDER_CANCELLED'
+        message.type === 'ORDER_CANCELLED' ||
+        message.type === 'ORDER_PLACED' ||
+        message.type === 'MARKET_STATUS'
       ) {
         fetchOrders();
       }

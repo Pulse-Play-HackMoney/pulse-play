@@ -55,6 +55,10 @@ function SessionDataExpanded({ sessionData }: { sessionData?: string }) {
       <Box flexDirection="column" paddingLeft={2} flexGrow={1}>
         <Text color="gray" dimColor>{'─ V2 Session Data ─'}</Text>
         <Box>
+          <Text color="gray">{'mode:'.padEnd(LABEL_WIDTH)}</Text>
+          <Text color="cyan">{String(data.mode ?? 'lmsr').padStart(VALUE_WIDTH)}</Text>
+        </Box>
+        <Box>
           <Text color="gray">{'market:'.padEnd(LABEL_WIDTH)}</Text>
           <Text color="white">{String(data.marketId ?? '-').padStart(VALUE_WIDTH)}</Text>
         </Box>
@@ -90,6 +94,59 @@ function SessionDataExpanded({ sessionData }: { sessionData?: string }) {
     );
   }
 
+  if (v === 3 && data.mode === 'p2p') {
+    // V3 P2P resolution
+    const result = String(data.result ?? '-');
+    const resultColor = result === 'WIN' ? 'green' : 'red';
+    const payout = Number(data.payout) || 0;
+    const profit = Number(data.profit) || 0;
+    const filledShares = Number(data.filledShares) || 0;
+    const filledCost = Number(data.filledCost) || 0;
+    const refunded = Number(data.refunded) || 0;
+
+    return (
+      <Box flexDirection="column" paddingLeft={2}>
+        <Text color="gray" dimColor>{'─ V3 P2P Session Data ─'}</Text>
+        <Box>
+          <Text color="gray">{'mode:'.padEnd(LABEL_WIDTH)}</Text>
+          <Text color="magenta">{'p2p'.padStart(VALUE_WIDTH)}</Text>
+        </Box>
+        <Box>
+          <Text color="gray">{'resolution:'.padEnd(LABEL_WIDTH)}</Text>
+          <Text color="cyan">{String(data.resolution ?? '-').padStart(VALUE_WIDTH)}</Text>
+        </Box>
+        <Box>
+          <Text color="gray">{'result:'.padEnd(LABEL_WIDTH)}</Text>
+          <Text color={resultColor} bold>{result.padStart(VALUE_WIDTH)}</Text>
+        </Box>
+        <Box>
+          <Text color="gray">{'orderId:'.padEnd(LABEL_WIDTH)}</Text>
+          <Text color="white">{String(data.orderId ?? '-').padStart(VALUE_WIDTH)}</Text>
+        </Box>
+        <Box>
+          <Text color="gray">{'filledShares:'.padEnd(LABEL_WIDTH)}</Text>
+          <Text color="white">{filledShares.toFixed(4).padStart(VALUE_WIDTH)}</Text>
+        </Box>
+        <Box>
+          <Text color="gray">{'filledCost:'.padEnd(LABEL_WIDTH)}</Text>
+          <Text color="white">{formatDollars(filledCost).padStart(VALUE_WIDTH)}</Text>
+        </Box>
+        <Box>
+          <Text color="gray">{'payout:'.padEnd(LABEL_WIDTH)}</Text>
+          <Text color="green">{formatDollars(payout).padStart(VALUE_WIDTH)}</Text>
+        </Box>
+        <Box>
+          <Text color="gray">{'profit:'.padEnd(LABEL_WIDTH)}</Text>
+          <Text color={profit >= 0 ? 'green' : 'red'}>{formatDollars(profit).padStart(VALUE_WIDTH)}</Text>
+        </Box>
+        <Box>
+          <Text color="gray">{'refunded:'.padEnd(LABEL_WIDTH)}</Text>
+          <Text color="yellow">{formatDollars(refunded).padStart(VALUE_WIDTH)}</Text>
+        </Box>
+      </Box>
+    );
+  }
+
   if (v === 3) {
     const result = String(data.result ?? '-');
     const resultColor = result === 'WIN' ? 'green' : 'red';
@@ -97,10 +154,15 @@ function SessionDataExpanded({ sessionData }: { sessionData?: string }) {
     const profit = Number(data.profit) || 0;
     const shares = Number(data.shares) || 0;
     const costPaid = Number(data.costPaid) || 0;
+    const mode = String(data.mode ?? 'lmsr');
 
     return (
       <Box flexDirection="column" paddingLeft={2}>
         <Text color="gray" dimColor>{'─ V3 Session Data ─'}</Text>
+        <Box>
+          <Text color="gray">{'mode:'.padEnd(LABEL_WIDTH)}</Text>
+          <Text color={mode === 'p2p' ? 'magenta' : 'cyan'}>{mode.padStart(VALUE_WIDTH)}</Text>
+        </Box>
         <Box>
           <Text color="gray">{'resolution:'.padEnd(LABEL_WIDTH)}</Text>
           <Text color="cyan">{String(data.resolution ?? '-').padStart(VALUE_WIDTH)}</Text>

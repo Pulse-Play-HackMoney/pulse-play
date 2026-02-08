@@ -81,6 +81,7 @@ export interface PositionsResponse {
     appSessionId: string;
     appSessionVersion: number;
     sessionStatus: SessionStatus;
+    mode?: 'lmsr' | 'p2p';
     timestamp: number;
   }>;
 }
@@ -165,6 +166,7 @@ export interface WsPositionAdded {
     appSessionId: string;
     appSessionVersion: number;
     sessionStatus: SessionStatus;
+    mode?: 'lmsr' | 'p2p';
     timestamp: number;
   };
   positionCount: number;

@@ -13,6 +13,7 @@ export function registerPositionRoutes(app: FastifyInstance, ctx: AppContext): v
         appSessionId: p.appSessionId,
         appSessionVersion: p.appSessionVersion,
         sessionStatus: p.sessionStatus,
+        mode: p.mode ?? 'lmsr',
         timestamp: p.timestamp,
       })),
     };

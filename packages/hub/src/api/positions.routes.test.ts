@@ -137,6 +137,7 @@ describe('Position Routes', () => {
       appSessionId: 'sess1',
       appSessionVersion: 1,
       sessionStatus: 'open',
+      mode: 'lmsr',
       timestamp: 12345,
     });
   });

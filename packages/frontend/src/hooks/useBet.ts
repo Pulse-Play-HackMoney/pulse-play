@@ -58,6 +58,7 @@ export function useBet(options: UseBetOptions = {}): UseBetReturn {
         setStep('creating-session');
         const v1Data: SessionDataV1 = {
           v: 1,
+          mode: 'lmsr',
           marketId,
           outcome,
           amount,

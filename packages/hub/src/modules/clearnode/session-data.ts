@@ -4,6 +4,7 @@ import type { Outcome } from '../lmsr/types.js';
 
 export interface SessionDataV1 {
   v: 1;
+  mode?: 'lmsr' | 'p2p';
   marketId: string;
   outcome: Outcome;
   amount: number;
@@ -14,6 +15,7 @@ export interface SessionDataV1 {
 
 export interface SessionDataV2 {
   v: 2;
+  mode?: 'lmsr' | 'p2p';
   marketId: string;
   outcome: Outcome;
   amount: number;
@@ -30,6 +32,7 @@ export interface SessionDataV2 {
 
 export interface SessionDataV3 {
   v: 3;
+  mode?: 'lmsr' | 'p2p';
   resolution: Outcome;
   result: 'WIN' | 'LOSS';
   payout: number;

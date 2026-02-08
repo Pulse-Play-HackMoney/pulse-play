@@ -128,6 +128,7 @@ export function registerBetRoutes(app: FastifyInstance, ctx: AppContext): void {
       const mmAddress = ctx.clearnodeClient.getAddress();
       const v2Data: SessionDataV2 = {
         v: 2,
+        mode: 'lmsr',
         marketId,
         outcome,
         amount,

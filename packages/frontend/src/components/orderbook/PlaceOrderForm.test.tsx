@@ -3,10 +3,20 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PlaceOrderForm } from './PlaceOrderForm';
 import * as WagmiProvider from '@/providers/WagmiProvider';
+import * as SelectedMarketProvider from '@/providers/SelectedMarketProvider';
 import * as api from '@/lib/api';
 
 jest.mock('@/providers/WagmiProvider', () => ({
   useWallet: jest.fn(),
+}));
+
+jest.mock('@/providers/SelectedMarketProvider', () => ({
+  useSelectedMarket: jest.fn().mockReturnValue({
+    market: { id: 'market-1', status: 'OPEN' },
+    outcomes: ['BALL', 'STRIKE'],
+    prices: [0.5, 0.5],
+    quantities: [0, 0],
+  }),
 }));
 
 jest.mock('@/lib/api');
@@ -44,6 +54,7 @@ jest.mock('@/lib/config', () => ({
 }));
 
 const mockUseWallet = WagmiProvider.useWallet as jest.Mock;
+const mockUseSelectedMarket = SelectedMarketProvider.useSelectedMarket as jest.Mock;
 const mockPlaceP2POrder = api.placeP2POrder as jest.MockedFunction<typeof api.placeP2POrder>;
 
 const mockOrderResponse = {
@@ -177,5 +188,25 @@ describe('PlaceOrderForm', () => {
     expect(screen.getByTestId('order-preset-5')).toBeInTheDocument();
     expect(screen.getByTestId('order-preset-10')).toBeInTheDocument();
     expect(screen.getByTestId('order-preset-25')).toBeInTheDocument();
+  });
+
+  it('shows warning and disables button when market is not open', async () => {
+    const user = userEvent.setup();
+    mockUseSelectedMarket.mockReturnValue({
+      market: { id: 'market-1', status: 'CLOSED' },
+      outcomes: ['BALL', 'STRIKE'],
+      prices: [0.5, 0.5],
+      quantities: [0, 0],
+    });
+
+    render(<PlaceOrderForm marketId="market-1" gameId="game-1" outcomes={['BALL', 'STRIKE']} />);
+
+    expect(screen.getByTestId('market-closed-warning')).toHaveTextContent('Market is not open for orders');
+
+    // Even with all fields filled, button should be disabled
+    await user.click(screen.getByTestId('order-outcome-ball'));
+    await user.type(screen.getByTestId('mcps-input'), '0.60');
+    await user.type(screen.getByTestId('order-amount-input'), '6');
+    expect(screen.getByTestId('place-order-button')).toBeDisabled();
   });
 });

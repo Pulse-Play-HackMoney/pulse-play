@@ -55,6 +55,11 @@ export function OrderBookTable({ marketId, outcomes, className = '' }: OrderBook
           updatedAt: Date.now(),
         }));
       }
+      if (message.type === 'MARKET_STATUS' && message.marketId === marketId &&
+          (message.status === 'RESOLVED' || message.status === 'CLOSED')) {
+        // Clear depth when market resolves or closes
+        setDepth((prev) => prev ? { ...prev, outcomes: Object.fromEntries(outcomes.map(o => [o, []])) } : prev);
+      }
     });
   }, [subscribe, marketId]);
 

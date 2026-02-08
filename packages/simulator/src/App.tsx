@@ -313,6 +313,10 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
             setPrices(Array(n).fill(1 / n));
             setQuantities(Array(n).fill(0));
 
+            // Clear previous market's positions
+            setPositions([]);
+            setPositionsScrollOffset(0);
+
             // Update sim engine config with current outcomes
             simEngine.setConfig({ outcomes: categoryOutcomes });
 
@@ -387,7 +391,7 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
               showStatus('Cannot reach MM. Is hub running?');
               return;
             }
-            simEngine.start(adminState.market.id, mmAddress);
+            simEngine.start(adminState.market.id, mmAddress, currentGameId ?? undefined);
             setSimStatus('running');
             showStatus('Simulation started');
           } else if (sub === 'stop') {
@@ -431,7 +435,7 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
               showStatus('Cannot reach MM. Is hub running?');
               return;
             }
-            simEngine.start(adminState.market.id, mmAddress);
+            simEngine.start(adminState.market.id, mmAddress, currentGameId ?? undefined);
             setSimStatus('running');
             showStatus('P2P simulation started');
           } else if (sub === 'mixed') {
@@ -449,7 +453,7 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
               showStatus('Cannot reach MM. Is hub running?');
               return;
             }
-            simEngine.start(adminState.market.id, mmAddress);
+            simEngine.start(adminState.market.id, mmAddress, currentGameId ?? undefined);
             setSimStatus('running');
             showStatus('Mixed (LMSR+P2P) simulation started');
           } else if (sub === 'lmsr') {
@@ -467,7 +471,7 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
               showStatus('Cannot reach MM. Is hub running?');
               return;
             }
-            simEngine.start(adminState.market.id, mmAddress);
+            simEngine.start(adminState.market.id, mmAddress, currentGameId ?? undefined);
             setSimStatus('running');
             showStatus('LMSR simulation started');
           } else {
@@ -639,6 +643,13 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
             const fillMsg = result.fills.length > 0 ? ` (${result.fills.length} fills)` : ' (resting)';
             addEvent('P2P', `Order ${result.orderId}: ${outcome} @${mcps} $${amount}${fillMsg}`);
             showStatus(`P2P order placed: ${result.orderId}`);
+
+            // Refresh wallet balance after order placement
+            try {
+              const balance = await clearnodePool.getBalance(wallet.address as `0x${string}`);
+              walletManager.updateBalance(wIdx, balance);
+              setWallets(walletManager.getAll());
+            } catch { /* non-critical */ }
           } else if (sub === 'cancel') {
             // :p2p cancel <orderId>
             const orderId = parts[2];
@@ -1011,6 +1022,17 @@ export function App({ wsUrl, hubRestUrl, clearnodeUrl }: AppProps) {
             return currentPositions;
           });
           refreshMMBalance();
+          // Refresh all sim wallet balances after resolution
+          const allWallets = walletManager.getAll();
+          const fundedWallets = allWallets.filter((w) => w.funded);
+          if (fundedWallets.length > 0) {
+            Promise.allSettled(
+              fundedWallets.map(async (w) => {
+                const balance = await clearnodePool.getBalance(w.address as `0x${string}`);
+                walletManager.updateBalance(w.index, balance);
+              }),
+            ).then(() => setWallets(walletManager.getAll()));
+          }
         }
         break;
       case 'GAME_STATE':

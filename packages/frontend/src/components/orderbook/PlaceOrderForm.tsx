@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useP2POrder } from '@/hooks/useP2POrder';
 import { useWallet } from '@/providers/WagmiProvider';
+import { useSelectedMarket } from '@/providers/SelectedMarketProvider';
 import type { Outcome, P2POrderResponse } from '@/lib/types';
 
 const OUTCOME_COLORS = [
@@ -22,6 +23,8 @@ interface PlaceOrderFormProps {
 
 export function PlaceOrderForm({ marketId, gameId, outcomes, className = '', onOrderPlaced }: PlaceOrderFormProps) {
   const { address } = useWallet();
+  const { market } = useSelectedMarket();
+  const isMarketOpen = market?.status === 'OPEN';
   const [selectedOutcome, setSelectedOutcome] = useState<Outcome | null>(null);
   const [mcps, setMcps] = useState<string>('');
   const [amount, setAmount] = useState<string>('');
@@ -42,7 +45,7 @@ export function PlaceOrderForm({ marketId, gameId, outcomes, className = '', onO
   const amountNum = Number(amount);
   const isValidMcps = mcpsNum > 0 && mcpsNum < 1;
   const isValidAmount = amountNum > 0;
-  const canSubmit = selectedOutcome && isValidMcps && isValidAmount && address && !isLoading;
+  const canSubmit = selectedOutcome && isValidMcps && isValidAmount && address && !isLoading && isMarketOpen;
 
   const maxShares = isValidMcps && isValidAmount ? amountNum / mcpsNum : 0;
   const matchHint = isValidMcps ? (1 - mcpsNum).toFixed(2) : '--';
@@ -62,6 +65,15 @@ export function PlaceOrderForm({ marketId, gameId, outcomes, className = '', onO
   return (
     <div className={`bg-surface-raised border border-border rounded-lg p-6 ${className}`} data-testid="place-order-form">
       <h2 className="text-sm font-mono uppercase tracking-wider text-text-secondary mb-4">Place Order</h2>
+
+      {!isMarketOpen && (
+        <div
+          className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 mb-4 text-sm text-yellow-400"
+          data-testid="market-closed-warning"
+        >
+          Market is not open for orders
+        </div>
+      )}
 
       {/* Outcome selector */}
       <div className="mb-4">

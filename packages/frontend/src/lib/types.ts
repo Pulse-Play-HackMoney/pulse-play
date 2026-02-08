@@ -149,6 +149,7 @@ export interface Position {
   appSessionId: string;
   appSessionVersion: number;
   sessionStatus?: SessionStatus;
+  mode?: 'lmsr' | 'p2p';
   timestamp: number;
 }
 

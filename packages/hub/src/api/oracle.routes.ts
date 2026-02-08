@@ -170,6 +170,7 @@ export function registerOracleRoutes(app: FastifyInstance, ctx: AppContext): voi
 
       const v3Data: SessionDataV3 = {
         v: 3,
+        mode: 'lmsr',
         resolution: outcome as Outcome,
         result: 'LOSS',
         payout: 0,
@@ -248,6 +249,7 @@ export function registerOracleRoutes(app: FastifyInstance, ctx: AppContext): voi
 
       const v3Data: SessionDataV3 = {
         v: 3,
+        mode: 'lmsr',
         resolution: outcome as Outcome,
         result: 'WIN',
         payout: winner.payout,
@@ -257,6 +259,32 @@ export function registerOracleRoutes(app: FastifyInstance, ctx: AppContext): voi
         timestamp: Date.now(),
       };
       const v3SessionData = encodeSessionData(v3Data);
+
+      // Submit V3 state before closing (Fix 10: winners get V3 data like losers)
+      const winnerVersion = pos ? pos.appSessionVersion + 1 : 2;
+      try {
+        await ctx.clearnodeClient.submitAppState({
+          appSessionId: sessionId,
+          intent: 'operate',
+          version: winnerVersion,
+          allocations: [
+            { participant: winnerAddr, asset: ASSET, amount: toMicroUnits(netAmount) },
+            { participant: mm, asset: ASSET, amount: toMicroUnits(fee) },
+          ],
+          sessionData: v3SessionData,
+        });
+        ctx.positionTracker.updateAppSessionVersion(winner.appSessionId, winnerVersion);
+        ctx.positionTracker.updateSessionData(winner.appSessionId, v3SessionData);
+        ctx.ws.broadcast({
+          type: 'SESSION_VERSION_UPDATED',
+          appSessionId: winner.appSessionId,
+          version: winnerVersion,
+          sessionData: v3SessionData,
+        });
+        ctx.log.resolutionStateUpdate(winner.address, winner.appSessionId, winnerVersion);
+      } catch (err) {
+        ctx.log.error(`resolution-winner-submitAppState-${winner.address}`, err);
+      }
 
       // Close session: return user's net funds (fee stays with MM)
       try {
@@ -268,7 +296,6 @@ export function registerOracleRoutes(app: FastifyInstance, ctx: AppContext): voi
           ],
           sessionData: v3SessionData,
         });
-        ctx.positionTracker.updateSessionData(winner.appSessionId, v3SessionData);
         ctx.log.resolutionSessionClosed(winner.address, winner.appSessionId);
       } catch (err) {
         ctx.log.error(`resolution-winner-closeSession-${winner.address}`, err);

@@ -2631,3 +2631,68 @@ Branch: feature/clob (worktree: ../pulse-play-clob/)
 - **Frontend:** 46 suites, 389 tests — all pass (+8 new tests)
 - **Simulator:** 5 suites, 162 tests — all pass
 - **TypeScript:** Hub + Simulator compile cleanly (tsc --noEmit)
+
+--- 2026-02-08: Post-CLOB Bug Fixes — Round 2 (11 fixes) ---
+
+### Fix 1: P2P Positions Showing in Market Maker Tab
+- Added `mode: p.mode ?? 'lmsr'` to positions.routes.ts response DTO
+- Added `mode?: 'lmsr' | 'p2p'` to hub types (PositionsResponse, WsPositionAdded)
+- Added `mode?: 'lmsr' | 'p2p'` to frontend Position type
+- usePositions now filters out `mode === 'p2p'` positions (fetch + POSITION_ADDED handler)
+
+### Fix 2: P2P Orders Not Auto-Appearing in "Your Orders"
+- Added `ORDER_PLACED` to UserOrders.tsx WS subscription
+
+### Fix 3: Order Book Tab Not Updating on Market Resolve
+- Added `MARKET_STATUS` to UserOrders.tsx and OrderBookTable.tsx WS handlers
+- OrderBookTable clears depth on RESOLVED/CLOSED
+
+### Fix 4: Place Order Buttons Enabled When Market Not Open
+- PlaceOrderForm now imports useSelectedMarket, checks isMarketOpen
+- Added market-closed-warning banner and disabled button when not OPEN
+- New test: "shows warning and disables button when market is not open"
+
+### Fix 5: Settled Sessions Not Clearing on New Market Open (Simulator)
+- Added `setPositions([]); setPositionsScrollOffset(0)` in `:open` handler
+
+### Fix 6: `:sim p2p` Internal Server Error 500
+- SimulationEngine.start() now accepts optional `gameId` parameter, stored as `this.gameId`
+- executeP2POrder() uses `this.gameId` instead of deriving from marketId
+- All `simEngine.start()` calls in App.tsx now pass `currentGameId`
+- orderbook.routes.ts success path wrapped in try-catch returning 400
+
+### Fix 7: P2P Orders Not Broadcasting POSITION_ADDED
+- Added POSITION_ADDED broadcast after addPosition() in orderbook.routes.ts
+- Includes position object with mode: 'p2p' and positionCount
+
+### Fix 8: Wallet Balance Not Updating After P2P/Resolution
+- `:p2p create` handler now refreshes wallet balance after order placement
+- MARKET_STATUS RESOLVED handler now refreshes all funded sim wallet balances
+
+### Fix 9: Add `mode` Field to All Session Data Versions
+- Added `mode?: 'lmsr' | 'p2p'` to SessionDataV1, V2, V3 interfaces (hub + frontend)
+- bet.routes.ts passes `mode: 'lmsr'` in V2 session data
+- oracle.routes.ts passes `mode: 'lmsr'` in V3 session data (losers + winners)
+- useBet.ts passes `mode: 'lmsr'` in V1 session data
+- useP2POrder.ts passes `mode: 'p2p'` in V1 session data
+- PositionsPanel.tsx: Added V3P2P display case with orderId, filledShares, filledCost, refunded
+- PositionsPanel.tsx: V2 and V3 displays now show mode field
+
+### Fix 10: Upgrade LMSR Winner Sessions to V3 Before Closing
+- Winners now get submitAppState() with V3 data + SESSION_VERSION_UPDATED broadcast before closeSession()
+- Mirrors the loser pattern exactly
+
+### Fix 11: CLOB Bets in All Stats Surfaces
+- Verified: P2P bets already flow through userTracker.recordBet/recordWin/recordLoss and positionTracker.clearPositions
+- No additional code changes needed beyond Fix 1 (mode in positions API)
+
+### Test Results
+- Hub: 534 passed (6 skipped live), 31 suites
+- Frontend: 390 passed, 46 suites (1 new test)
+- Simulator: 162 passed, 5 suites
+- Total: 1,086 tests, 0 failures
+
+### Files Changed (17):
+- hub: positions.routes.ts, orderbook.routes.ts, bet.routes.ts, oracle.routes.ts, session-data.ts, types.ts, positions.routes.test.ts
+- frontend: types.ts, usePositions.ts, UserOrders.tsx, OrderBookTable.tsx, PlaceOrderForm.tsx, PlaceOrderForm.test.tsx, session-data.ts, useBet.ts, useP2POrder.ts
+- simulator: App.tsx, simulation-engine.ts, PositionsPanel.tsx

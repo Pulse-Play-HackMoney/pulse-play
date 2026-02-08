@@ -38,6 +38,11 @@ export function usePositions(options: UsePositionsOptions = {}): UsePositionsRet
       const response = await getPositions(address);
       let filteredPositions = response.positions;
 
+      // Filter out P2P positions (shown in Order Book tab instead)
+      filteredPositions = filteredPositions.filter(
+        (p) => (p.mode ?? 'lmsr') !== 'p2p'
+      );
+
       // Filter by marketId if specified
       if (marketId) {
         filteredPositions = filteredPositions.filter(
@@ -73,7 +78,8 @@ export function usePositions(options: UsePositionsOptions = {}): UsePositionsRet
       if (
         message.type === 'POSITION_ADDED' &&
         message.position.address === address &&
-        (!marketId || message.position.marketId === marketId)
+        (!marketId || message.position.marketId === marketId) &&
+        (message.position.mode ?? 'lmsr') !== 'p2p'
       ) {
         setPositions((prev) => [...prev, message.position]);
       }

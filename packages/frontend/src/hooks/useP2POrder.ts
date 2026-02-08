@@ -57,12 +57,21 @@ export function useP2POrder(options: UseP2POrderOptions = {}): UseP2POrderReturn
       try {
         // Step 1: Create app session on Clearnode
         setStep('creating-session');
+        const v1Data = {
+          v: 1,
+          mode: 'p2p' as const,
+          marketId,
+          outcome,
+          amount,
+          timestamp: Date.now(),
+        };
         const sessionParams = {
           counterparty: MM_ADDRESS,
           allocations: [
             { asset: ASSET, amount: toMicroUnits(amount), participant: address as `0x${string}` },
             { asset: ASSET, amount: '0', participant: MM_ADDRESS },
           ],
+          sessionData: JSON.stringify(v1Data),
         };
         let session;
         try {
